@@ -1,0 +1,19 @@
+{
+  "name": "akibacore",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run backend:dev",
+    "backend:dev": "npm --prefix shopanime_be run dev",
+    "frontend:dev": "npm --prefix shopanime_fe run dev",
+    "build": "npm run backend:build && npm run frontend:build",
+    "backend:build": "npm --prefix shopanime_be run build",
+    "frontend:build": "npm --prefix shopanime_fe run build",
+    "backend:start": "npm --prefix shopanime_be run start",
+    "frontend:start": "npm --prefix shopanime_fe run start",
+    "preview": "npm run frontend:start",
+    "clean": "node -e \"fs.rmSync('shopanime_fe/.next',{recursive:true,force:true});fs.rmSync('shopanime_be/dist',{recursive:true,force:true})\"",
+    "lint": "npm --prefix shopanime_be run build && npm --prefix shopanime_fe run typecheck"
+  }
+}

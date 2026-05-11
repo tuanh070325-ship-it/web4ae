@@ -1,0 +1,47 @@
+---
+description: AkibaCore coding-agent rules for simple, surgical, verified changes across the NestJS backend and React/Vite frontend.
+alwaysApply: true
+---
+
+# AkibaCore AI Guidelines
+
+Apply these rules whenever writing, reviewing, or refactoring code in this repository.
+
+## Work Style
+
+- Read relevant files before editing.
+- State assumptions when a request is ambiguous.
+- Keep changes small and directly tied to the request.
+- Avoid speculative abstractions, dependencies, and features.
+- Match the existing style in edited files.
+- Verify changes with commands, and report results.
+
+## Project Context
+
+- Backend: `shopanime_be`, NestJS, MySQL, API under `/api`.
+- Frontend: `shopanime_fe`, React 19, Vite, Tailwind, React Router.
+- Frontend shared API types: `shopanime_fe/src/lib/types.ts`.
+- Frontend formatting helpers: `shopanime_fe/src/lib/format.ts`.
+- Backend API/schema docs: `shopanime_be/API_DOCS.md`, `shopanime_be/database_schema.md`.
+
+## TypeScript Rules
+
+- Keep frontend strict.
+- Do not introduce `any`, `as any`, `@ts-ignore`, or `@ts-expect-error`.
+- Use `unknown` at unsafe boundaries, then narrow.
+- Treat API numeric values as possibly `number | string`.
+- Use existing shared types and helpers before creating new ones.
+
+## Verification Commands
+
+- Frontend typecheck: `npm --prefix shopanime_fe run typecheck`
+- Frontend build: `npm --prefix shopanime_fe run build`
+- Backend build: `npm run backend:build`
+- Repo typecheck/lint: `npm run lint`
+- Repo build: `npm run build`
+
+## Safety Notes
+
+- Do not run destructive schema rebuilds unless explicitly requested.
+- Do not remove `shopanime_fe/index.html`; Vite needs it as the app entry.
+- Do not edit `.env` secrets unless the user specifically asks.

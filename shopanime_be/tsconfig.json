@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["main.ts", "mockData.ts", "src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

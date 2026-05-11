@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    
+  --color-akiba-red: #E63946;
+  --color-akiba-bg: #121212;
+  --color-akiba-card: #1E1E1E;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-akiba-bg text-white font-sans antialiased;
+  }
+}
+
+@keyframes akiba-promo-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-33.3333%, 0, 0);
+  }
+}
+
+@layer utilities {
+  .akiba-promo-track {
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .akiba-promo-shell:hover .akiba-promo-track,
+  .akiba-promo-shell:focus-within .akiba-promo-track {
+    animation-play-state: paused;
+  }
+
+  @media (max-width: 640px) {
+    .akiba-promo-track {
+      animation-duration: 12s !important;
+    }
+  }
+}
