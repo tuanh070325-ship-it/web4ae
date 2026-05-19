@@ -1,14 +1,12 @@
 import { Body, Controller, Get, Inject, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {
-    this.register = this.register.bind(this);
-    this.login = this.login.bind(this);
-    this.me = this.me.bind(this);
-    this.logout = this.logout.bind(this);
+    bindControllerMethods(this, ['register', 'login', 'me', 'logout']);
   }
 
   @Post('register')

@@ -29,11 +29,14 @@ export function Wishlist() {
 
   const removeItem = async (productId: number) => {
     await apiDelete(`/wishlist/${productId}`);
+    window.dispatchEvent(new Event("akibacore:wishlist-updated"));
     await loadWishlist();
   };
 
   const moveToCart = async (productId: number) => {
     await apiPost(`/wishlist/${productId}/move-to-cart`);
+    window.dispatchEvent(new Event("akibacore:cart-updated"));
+    window.dispatchEvent(new Event("akibacore:wishlist-updated"));
     await loadWishlist();
   };
 

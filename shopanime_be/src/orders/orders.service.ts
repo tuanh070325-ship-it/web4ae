@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DbService } from '../db/db.service.js';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly db: DbService) {}
+  constructor(@Inject(DbService) private readonly db: DbService) {}
 
   getAllOrders() {
     return this.db.query('SELECT * FROM orders ORDER BY created_at DESC');
@@ -25,30 +25,68 @@ export class OrdersService {
 
   checkout(body: any) {
     return this.db.transaction(async (tx) => {
-      const cartItems = await tx.query<any>(
-        `
-          SELECT c.quantity, p.id, p.name, p.price, p.stock_quantity, p.image_url AS image
-          FROM carts c
-          JOIN products p ON c.product_id = p.id
-          WHERE c.user_id = ?
-          FOR UPDATE
-        `,
-        [body.user_id],
-      );
+      const requestedItems = Array.isArray(body.items) ? body.items : [];
+      const isBuyNowCheckout = requestedItems.length > 0;
+      let cartItems: any[] = [];
+
+      if (isBuyNowCheckout) {
+        const quantitiesByProductId = new Map<number, number>();
+        for (const requestedItem of requestedItems) {
+          const productId = Number(requestedItem.product_id);
+          const quantity = Number(requestedItem.quantity || 1);
+          if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+            throw new BadRequestException('Product and positive quantity are required');
+          }
+          quantitiesByProductId.set(productId, (quantitiesByProductId.get(productId) || 0) + quantity);
+        }
+
+        const productIds = [...quantitiesByProductId.keys()];
+        const placeholders = productIds.map(() => '?').join(', ');
+        const products = await tx.query<any>(
+          `
+            SELECT id, name, price, stock_quantity, shipping_final_fee, image_url AS image
+            FROM products
+            WHERE id IN (${placeholders})
+            FOR UPDATE
+          `,
+          productIds,
+        );
+
+        if (products.length !== productIds.length) {
+          throw new NotFoundException('Product not found');
+        }
+
+        cartItems = products.map((product) => ({
+          ...product,
+          quantity: quantitiesByProductId.get(Number(product.id)) || 1,
+        }));
+      } else {
+        cartItems = await tx.query<any>(
+          `
+            SELECT c.quantity, p.id, p.name, p.price, p.stock_quantity, p.shipping_final_fee, p.image_url AS image
+            FROM carts c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.user_id = ?
+            FOR UPDATE
+          `,
+          [body.user_id],
+        );
+      }
 
       if (cartItems.length === 0) {
         throw new BadRequestException('Cart is empty');
       }
 
       let subtotal = 0;
+      let shippingFee = 0;
       for (const item of cartItems) {
         if (Number(item.stock_quantity) < Number(item.quantity)) {
           throw new BadRequestException(`Product ${item.name} is out of stock`);
         }
         subtotal += Number(item.price) * Number(item.quantity);
+        shippingFee += Number(item.shipping_final_fee || 0);
       }
 
-      const shippingFee = 15;
       const finalAmount = subtotal + shippingFee;
       const orderCode = `ORD-${Date.now()}`;
 
@@ -102,7 +140,9 @@ export class OrdersService {
         ]);
       }
 
-      await tx.execute('DELETE FROM carts WHERE user_id = ?', [body.user_id]);
+      if (!isBuyNowCheckout) {
+        await tx.execute('DELETE FROM carts WHERE user_id = ?', [body.user_id]);
+      }
 
       return { orderId: orderResult.insertId, order_code: orderCode, final_amount: finalAmount };
     });

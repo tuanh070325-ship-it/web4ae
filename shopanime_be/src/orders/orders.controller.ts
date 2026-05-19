@@ -1,10 +1,20 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards, ForbiddenException, BadRequestException, NotFoundException, Inject } from '@nestjs/common';
 import { OrdersService } from './orders.service.js';
 import { AuthGuard, AdminGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(@Inject(OrdersService) private readonly ordersService: OrdersService) {
+    bindControllerMethods(this, [
+      'getAllOrders',
+      'getUserOrders',
+      'getMyOrders',
+      'getOrderDetails',
+      'checkout',
+      'updateOrderStatus',
+    ]);
+  }
 
   @Get()
   @UseGuards(AuthGuard, AdminGuard)

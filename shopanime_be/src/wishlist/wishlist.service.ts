@@ -1,12 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CartService } from '../cart/cart.service.js';
 import { DbService } from '../db/db.service.js';
 
 @Injectable()
 export class WishlistService {
   constructor(
-    private readonly db: DbService,
-    private readonly cartService: CartService,
+    @Inject(DbService) private readonly db: DbService,
+    @Inject(CartService) private readonly cartService: CartService,
   ) {}
 
   getWishlist(userId: number) {

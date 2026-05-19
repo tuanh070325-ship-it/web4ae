@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Check, ChevronRight, Heart, Share2, ShoppingCart, Sparkles, Star, Zap } from "lucide-react";
+import { Box, CalendarDays, Check, ChevronRight, Heart, PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Sparkles, Star, Truck, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { apiGet, apiPost } from "../lib/api";
-import { formatUsd, getProductAuthor, getProductDiscountAmount, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, hasProductDiscount, toNumber } from "../lib/format";
+import { formatShippingFee, formatUsd, getProductAuthor, getProductDiscountAmount, getProductDiscountPercent, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountPercent, getProductShippingFee, hasProductDiscount, toNumber } from "../lib/format";
 import type { ApiMutationResponse, ApiResponse, Product, Review } from "../lib/types";
 import { useAuth } from "../components/auth/AuthProvider";
 
@@ -29,9 +29,11 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [buying, setBuying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const productId = product?.id;
 
   useEffect(() => {
@@ -78,15 +80,36 @@ export function ProductDetail() {
     if (!product || !requireLogin()) return;
     setMessage(null);
     await apiPost<ApiMutationResponse>("/cart/items", { product_id: product.id, quantity });
+    window.dispatchEvent(new Event("akibacore:cart-updated"));
     setAdded(true);
     setMessage("Added to cart");
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleBuyNow = async () => {
+    if (!product || !requireLogin()) return;
+    if (product.stock_quantity === 0) return;
+    setBuying(true);
+    setMessage(null);
+    try {
+      sessionStorage.setItem(
+        "akibacore.buyNowCheckout",
+        JSON.stringify({
+          product,
+          quantity,
+        }),
+      );
+      navigate("/checkout?buyNow=1");
+    } finally {
+      setBuying(false);
+    }
   };
 
   const handleAddToWishlist = async () => {
     if (!product || !requireLogin()) return;
     setMessage(null);
     await apiPost<ApiMutationResponse>("/wishlist", { product_id: product.id });
+    window.dispatchEvent(new Event("akibacore:wishlist-updated"));
     setMessage("Added to wishlist");
   };
 
@@ -127,8 +150,14 @@ export function ProductDetail() {
   const discountPercent = getProductDiscountPercent(product);
   const discountAmount = getProductDiscountAmount(product);
   const isDiscounted = hasProductDiscount(product);
+  const shippingFee = getProductShippingFee(product);
+  const finalShippingFee = getProductFinalShippingFee(product);
+  const shippingDiscountPercent = getProductShippingDiscountPercent(product);
+  const shippingSavings = Math.max(0, shippingFee - finalShippingFee);
+  const hasFreeShipping = finalShippingFee <= 0;
   const externalRatingCount = Number(product.external_rating_count || 0);
-  const externalRating = toNumber(product.external_rating);
+  const description = product.description || "No description available for this volume.";
+  const canExpandDescription = description.length > 260;
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black text-white">
@@ -146,18 +175,18 @@ export function ProductDetail() {
           <span className="truncate text-white">{product.name}</span>
         </div>
 
-        <section className="grid min-h-[680px] gap-10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:items-center">
+        <section className="grid gap-10 lg:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.28fr)] lg:items-start">
           <motion.div
             initial={{ opacity: 0, y: 35, rotate: -2 }}
             animate={{ opacity: 1, y: 0, rotate: 0 }}
             transition={{ type: "spring", stiffness: 90, damping: 16 }}
-            className="relative mx-auto w-full max-w-[420px]"
+            className="relative mx-auto w-full max-w-[520px]"
           >
             <div className="absolute -inset-8 bg-red-600/20 blur-3xl" />
             <motion.div
-              whileHover={{ scale: 1.04, rotateY: 12, rotateX: 4 }}
+              whileHover={{ scale: 1.025, rotateY: 6, rotateX: 2 }}
               transition={{ type: "spring", stiffness: 280, damping: 20 }}
-              className="relative aspect-[3/4] overflow-hidden border border-zinc-700 bg-zinc-950 shadow-[18px_18px_0_0_rgba(230,57,70,0.95),0_40px_90px_rgba(0,0,0,0.65)] transform-gpu"
+              className="relative aspect-[4/5] overflow-hidden rounded border border-[#2e333d] bg-zinc-950 shadow-[16px_16px_0_0_rgba(230,57,70,0.95),0_40px_90px_rgba(0,0,0,0.65)] transform-gpu"
             >
               <img src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
               <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/20 to-transparent" />
@@ -167,6 +196,29 @@ export function ProductDetail() {
                 </div>
               )}
             </motion.div>
+
+            <div className="mt-6 grid grid-cols-5 gap-3">
+              {[0, 1, 2, 3].map((index) => (
+                <div key={index} className={`aspect-square overflow-hidden rounded border bg-white/5 ${index === 0 ? "border-[#e63946] shadow-[0_0_18px_rgba(230,57,70,0.35)]" : "border-[#2e333d] opacity-55"}`}>
+                  <img src={getProductImage(product)} alt="" className={`h-full w-full object-cover ${index === 0 ? "" : "grayscale"}`} />
+                </div>
+              ))}
+              <div className="flex aspect-square items-center justify-center rounded border border-[#2e333d] bg-white/[0.04] text-sm font-black text-white">+12</div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-zinc-400 sm:grid-cols-4">
+              {[
+                ["Format", product.book_format || "Paperback"],
+                ["Publisher", product.publisher_name || "Catalog"],
+                ["Stock", product.stock_quantity > 0 ? `${product.stock_quantity} ready` : "Out"],
+                ["Code", catalogCode],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded border border-[#2e333d] bg-black/30 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-zinc-600">{label}</div>
+                  <div className="mt-1 line-clamp-2 text-xs font-bold uppercase text-white">{value}</div>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
           <motion.div
@@ -176,10 +228,10 @@ export function ProductDetail() {
             className="relative"
           >
             <div className="mb-5 flex flex-wrap items-center gap-3 text-xs font-black uppercase tracking-widest">
-              <span className="inline-flex items-center gap-2 bg-red-600 px-3 py-1.5 text-white">
+              <span className="inline-flex items-center gap-2 rounded border border-[#e63946]/50 bg-[#e63946] px-3 py-1.5 text-white">
                 <Zap className="h-3.5 w-3.5" /> Trending Volume
               </span>
-              <span className="text-zinc-500">{product.series_name || product.category_name || "Manga Catalog"}</span>
+              <span className="text-zinc-500">{product.category_name || "Manga"}</span>
               <span className="text-red-500">{getProductAuthor(product)}</span>
             </div>
 
@@ -187,7 +239,13 @@ export function ProductDetail() {
               {product.name}
             </h1>
 
-            <div className="mt-6 flex flex-wrap items-center gap-5 border-y border-zinc-800 py-5">
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-bold text-zinc-400">
+              <span>By <span className="text-[#e63946]">{getProductAuthor(product)}</span></span>
+              <span className="h-4 w-px bg-zinc-800" />
+              <span>Vol. <span className="text-white">{product.volume_number || "Launch"}</span></span>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-5 border-y border-zinc-800 py-4">
               <div className="flex items-center gap-2">
                 <RatingStars value={reviewAverage} />
                 <span className="text-lg font-black text-[#f5a623]">{reviewCount > 0 ? reviewAverage.toFixed(1) : "New"}</span>
@@ -197,92 +255,161 @@ export function ProductDetail() {
               </div>
               <div className="h-6 w-px bg-zinc-800" />
               <div className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                Vol <span className="text-white">{product.volume_number || "Launch"}</span>
+                <span className="text-white">{externalRatingCount.toLocaleString()}</span> readers
               </div>
-              {externalRatingCount > 0 && (
-                <>
-                  <div className="h-6 w-px bg-zinc-800" />
-                  <div className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                    {product.external_rating_source || "Catalog"} <span className="text-white">{externalRating.toFixed(1)}</span> / {externalRatingCount.toLocaleString()} readers
+            </div>
+
+            <div className="mt-6 max-w-3xl">
+              <p className={`text-base font-semibold leading-7 text-zinc-300 ${descriptionExpanded ? "" : "line-clamp-4"}`}>
+                {description}
+              </p>
+              {canExpandDescription && (
+                <button
+                  type="button"
+                  onClick={() => setDescriptionExpanded((expanded) => !expanded)}
+                  className="mt-3 text-sm font-black uppercase tracking-widest text-[#e63946] transition-colors hover:text-[#ff8aa0]"
+                >
+                  {descriptionExpanded ? "Show less" : "Read more"}
+                </button>
+              )}
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded border border-[#2e333d] bg-[#15171d]/95 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+              <div className="grid gap-px bg-[#2e333d] lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)]">
+                <div className="flex flex-col justify-between gap-5 bg-[linear-gradient(135deg,rgba(230,57,70,0.12),rgba(0,0,0,0.88))] p-6">
+                  <div>
+                  <div className="mb-3 text-[11px] font-black uppercase tracking-widest text-zinc-500">Product Price</div>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <span className="text-5xl font-black leading-none text-white">{formatUsd(finalPrice)}</span>
+                    {isDiscounted && (
+                      <span className="rounded bg-[#e63946] px-3 py-2 text-lg font-black text-white">-{discountPercent}%</span>
+                    )}
                   </div>
-                </>
-              )}
-            </div>
-
-            <div className="mt-7 rounded border border-red-500/40 bg-[linear-gradient(135deg,rgba(230,57,70,0.16),rgba(0,0,0,0.88)_55%,rgba(94,165,200,0.12))] p-5 shadow-[0_0_40px_rgba(230,57,70,0.12)]">
-              <div className="flex flex-wrap items-end gap-4">
-                <span className="text-5xl font-black text-white sm:text-6xl">{formatUsd(finalPrice)}</span>
-                {isDiscounted && (
-                  <>
-                    <span className="pb-2 text-2xl font-black text-zinc-600 line-through">{formatUsd(originalPrice)}</span>
-                    <motion.span
-                      animate={{ y: [0, -3, 0] }}
-                      transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                      className="mb-2 rounded bg-red-600 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-white shadow-[0_0_18px_rgba(230,57,70,0.55)]"
-                    >
-                      Save {formatUsd(discountAmount)}
-                    </motion.span>
-                  </>
-                )}
-              </div>
-              {isDiscounted && (
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-widest text-[#ff8aa0]">
-                  <Sparkles className="h-4 w-4" />
-                  <span>{discountPercent}% limited manga drop pricing</span>
+                  <div className="mt-3 text-sm font-semibold text-zinc-400">
+                    Cover price: {isDiscounted ? <span className="line-through">{formatUsd(originalPrice)}</span> : <span>{formatUsd(originalPrice)}</span>}
+                    {isDiscounted && <span className="ml-3 text-[#ff8aa0]">Save {formatUsd(discountAmount)}</span>}
+                  </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded border border-[#2e333d] bg-black/30 px-4 py-3">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Rewards</div>
+                      <div className="mt-1 text-sm font-semibold text-zinc-300">
+                        Earn <span className="font-black text-white">{Math.max(1, Math.round(finalPrice))} Core Points</span>
+                      </div>
+                    </div>
+                    <div className="rounded border border-[#2e333d] bg-black/30 px-4 py-3">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Availability</div>
+                      <div className="mt-1 text-sm font-black text-white">{product.stock_quantity > 0 ? "In stock" : "Out of stock"}</div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <p className="mt-7 max-w-3xl text-lg font-semibold leading-8 text-zinc-300">
-              {product.description || "No description available for this volume."}
-            </p>
-
-            <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden border border-zinc-800 bg-zinc-800 sm:grid-cols-4">
-              {[
-                ["Catalog ID", catalogCode],
-                ["Format", product.book_format || "PAPERBACK"],
-                ["Publisher", product.publisher_name || "Unknown"],
-                ["Stock", product.stock_quantity > 0 ? `${product.stock_quantity} ready` : "Out"],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-black p-4">
-                  <div className="text-[11px] font-black uppercase tracking-widest text-zinc-500">{label}</div>
-                  <div className="mt-1 break-words text-sm font-black uppercase text-white">{value}</div>
+                <div className="bg-[#111216] p-6">
+                  <div className="mb-4 text-[11px] font-black uppercase tracking-widest text-zinc-500">Shipping</div>
+                  <div className={`rounded border p-4 ${hasFreeShipping ? "border-green-500/55 bg-green-500/8" : "border-[#e63946]/45 bg-[#e63946]/8"}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <Truck className={hasFreeShipping ? "h-6 w-6 text-green-400" : "h-6 w-6 text-[#ff8aa0]"} />
+                        <div>
+                          <div className={`text-sm font-black uppercase ${hasFreeShipping ? "text-green-400" : "text-[#ff8aa0]"}`}>
+                            {hasFreeShipping ? "Free Shipping" : "Shipping Sale"}
+                          </div>
+                          <div className="text-sm text-zinc-400">{hasFreeShipping ? "Unlocked for this item" : `Save ${formatUsd(shippingSavings)} today`}</div>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-black/35 px-3 py-1 text-xs font-black uppercase text-white">
+                        {hasFreeShipping ? "Free" : `-${shippingDiscountPercent}%`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded border border-[#2e333d] bg-black/20 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="font-bold text-white">Standard Delivery</div>
+                        <div className="text-sm text-zinc-500">3-7 business days</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-black text-white">{formatShippingFee(finalShippingFee)}</div>
+                        {shippingFee > 0 && <div className="text-xs font-bold text-zinc-500 line-through">{formatUsd(shippingFee)}</div>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs font-bold text-zinc-500">Shipping calculated for: <span className="text-[#e63946]">United States</span></div>
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <div className="flex h-14 items-center bg-zinc-950">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-full w-14 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">-</button>
-                <input value={quantity} onChange={(event) => setQuantity(Math.max(1, parseInt(event.target.value) || 1))} type="number" min="1" className="h-full w-14 bg-transparent p-0 text-center font-black text-white outline-none" />
-                <button onClick={() => setQuantity(quantity + 1)} className="h-full w-14 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">+</button>
               </div>
 
-              <button
-                onClick={() => void handleAddToCart()}
-                disabled={product.stock_quantity === 0 || added}
-                className={`h-14 flex-1 font-black uppercase tracking-widest transition-transform ${
-                  added
-                    ? "bg-green-600 text-white shadow-[5px_5px_0_0_rgba(22,163,74,0.7)]"
-                    : product.stock_quantity === 0
+              <div className="grid gap-px bg-[#2e333d] md:grid-cols-3">
+                {[
+                  [CalendarDays, "Estimated Delivery", "2-5 days"],
+                  [Box, "Secure Packaging", "Shock & moisture safe"],
+                  [RotateCcw, "Easy Returns", "Within 7 days"],
+                ].map(([Icon, title, subtitle]) => (
+                  <div key={String(title)} className="flex items-center gap-3 bg-[#111216] p-4">
+                    <Icon className="h-5 w-5 text-zinc-400" />
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-widest text-zinc-500">{String(title)}</div>
+                      <div className="mt-1 text-sm font-semibold text-white">{String(subtitle)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-4 bg-[#15171d] p-5 lg:grid-cols-[156px_minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="flex h-14 items-center justify-center border border-[#2e333d] bg-black/40">
+                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-full w-14 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">-</button>
+                  <input value={quantity} onChange={(event) => setQuantity(Math.max(1, parseInt(event.target.value) || 1))} type="number" min="1" className="h-full w-14 bg-transparent p-0 text-center font-black text-white outline-none" />
+                  <button onClick={() => setQuantity(quantity + 1)} className="h-full w-14 text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">+</button>
+                </div>
+                <button
+                  onClick={() => void handleAddToCart()}
+                  disabled={product.stock_quantity === 0 || added || buying}
+                  className={`h-14 font-black uppercase tracking-widest transition-transform ${
+                    added
+                      ? "bg-green-600 text-white shadow-[5px_5px_0_0_rgba(22,163,74,0.7)]"
+                      : product.stock_quantity === 0
+                        ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
+                        : "bg-[#e63946] text-white shadow-[5px_5px_0_0_rgba(255,255,255,0.16)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+                  }`}
+                >
+                  <span className="inline-flex items-center justify-center gap-3">
+                    {added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
+                    {added ? "Added" : "Add to cart"}
+                  </span>
+                </button>
+                <button
+                  onClick={() => void handleAddToWishlist()}
+                  className="h-14 border border-[#2e333d] bg-black/20 font-black uppercase tracking-widest text-white transition-colors hover:border-[#e63946] hover:text-[#e63946]"
+                >
+                  <span className="inline-flex items-center justify-center gap-3"><Heart className="h-5 w-5" /> Add to wishlist</span>
+                </button>
+                <button
+                  onClick={() => void handleBuyNow()}
+                  disabled={product.stock_quantity === 0 || buying}
+                  className={`h-14 font-black uppercase tracking-widest transition-transform lg:col-span-3 ${
+                    product.stock_quantity === 0
                       ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
                       : "bg-white text-black shadow-[5px_5px_0_0_rgba(230,57,70,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
-                }`}
-              >
-                <span className="inline-flex items-center justify-center gap-3">
-                  {added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
-                  {added ? "Added to cart" : "Add to cart"}
-                </span>
-              </button>
-            </div>
+                  }`}
+                >
+                  {buying ? "Processing..." : "Buy now"}
+                </button>
+              </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <button onClick={() => void handleAddToWishlist()} className="h-12 bg-black text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-zinc-900">
-                <span className="inline-flex items-center gap-2"><Heart className="h-4 w-4 text-red-500" /> Wishlist</span>
-              </button>
-              <button className="h-12 bg-black text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-zinc-900">
-                <span className="inline-flex items-center gap-2"><Share2 className="h-4 w-4" /> Share</span>
-              </button>
+              <div className="grid gap-px bg-[#2e333d] md:grid-cols-3">
+                {[
+                  [ShieldCheck, "Secure Payment", "SSL 256-bit"],
+                  [PackageCheck, "Authentic Stock", "Official catalog"],
+                  [Share2, "Share", "Send this volume"],
+                ].map(([Icon, title, subtitle]) => (
+                  <div key={String(title)} className="flex items-center gap-3 bg-[#111216] p-4">
+                    <Icon className="h-5 w-5 text-zinc-400" />
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-widest text-zinc-500">{String(title)}</div>
+                      <div className="mt-1 text-sm font-semibold text-white">{String(subtitle)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             {message && <p className="mt-4 text-sm font-black uppercase tracking-widest text-green-500">{message}</p>}
           </motion.div>

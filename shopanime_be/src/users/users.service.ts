@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DbService } from '../db/db.service.js';
 import { hashPassword } from '../auth/password.js';
 
@@ -16,7 +16,7 @@ function optionalString(value: unknown) {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly db: DbService) {}
+  constructor(@Inject(DbService) private readonly db: DbService) {}
 
   getAllUsers() {
     return this.db.query('SELECT id, username, email, full_name, avatar_url, phone, status, role, created_at FROM users');

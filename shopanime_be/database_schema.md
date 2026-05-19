@@ -93,6 +93,9 @@ Bổ sung các trường đặc thù cho sách truyện.
 - `discount_percent` (DECIMAL 5,2, Default 0) - Phan tram giam gia admin nhap, hop le 0-95.
 - `price` (DECIMAL 12,2) - Gia ban thuc te sau khi backend tu tinh tu `original_price` va `discount_percent`.
 - `discount_price` (DECIMAL 12,2, Nullable) - Truong tuong thich response cu, bang `price` khi co giam gia.
+- `shipping_fee` (DECIMAL 12,2, Default 0) - Phi ship goc admin nhap cho san pham.
+- `shipping_discount_percent` (DECIMAL 5,2, Default 0) - Phan tram giam phi ship, hop le 0-100.
+- `shipping_final_fee` (DECIMAL 12,2, Default 0) - Phi ship thuc te backend tu tinh tu `shipping_fee` va `shipping_discount_percent`.
 - `stock_quantity` (INT)
 - `sku` (VARCHAR 50, Unique)
 - `status` (ENUM: 'ACTIVE', 'DRAFT', 'OUT_OF_STOCK')

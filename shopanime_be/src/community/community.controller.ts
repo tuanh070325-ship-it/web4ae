@@ -1,15 +1,12 @@
 import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, BadRequestException, Inject } from '@nestjs/common';
 import { CommunityService } from './community.service.js';
 import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller()
 export class CommunityController {
   constructor(@Inject(CommunityService) private readonly communityService: CommunityService) {
-    this.getPosts = this.getPosts.bind(this);
-    this.createPost = this.createPost.bind(this);
-    this.likePost = this.likePost.bind(this);
-    this.getProductReviews = this.getProductReviews.bind(this);
-    this.createReview = this.createReview.bind(this);
+    bindControllerMethods(this, ['getPosts', 'createPost', 'likePost', 'getProductReviews', 'createReview']);
   }
 
   @Get('posts')

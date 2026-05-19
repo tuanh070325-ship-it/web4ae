@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { AuthGuard, AdminGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(@Inject(UsersService) private readonly usersService: UsersService) {
+    bindControllerMethods(this, [
+      'getAllUsers',
+      'createUser',
+      'getUser',
+      'updateUser',
+      'deleteUser',
+      'getAddresses',
+      'createAddress',
+      'updateAddress',
+      'deleteAddress',
+    ]);
+  }
 
   @Get()
   @UseGuards(AuthGuard, AdminGuard)

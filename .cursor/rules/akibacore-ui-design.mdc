@@ -1,0 +1,20 @@
+---
+description: AkibaCore UI and mobile-first design rules for React, Next.js, Tailwind, and landing/catalog experiences.
+globs: ["shopanime_fe/src/**/*.tsx", "shopanime_fe/src/**/*.css", "shopanime_fe/src/app/**/*.tsx"]
+alwaysApply: false
+---
+
+# AkibaCore UI Design Rules
+
+Before changing frontend UI, read `DESIGN.md` at the repository root.
+
+Apply these rules:
+
+- Preserve the existing Next.js + React 19 + Tailwind stack.
+- Use `DESIGN.md` tokens and existing AkibaCore visual language before adding new colors, spacing patterns, or component styles.
+- Keep mobile-first catalog UX: navigation and filters use drawers, overlays, or collapsible sections instead of pushing products below the fold.
+- Use `lucide-react` icons for interactive UI controls.
+- Use real semantic controls with accessible labels, visible focus states, and touch-friendly target sizes.
+- Use helpers from `shopanime_fe/src/lib/format.ts` for product image, path, price, discount, and API number formatting.
+- Do not add new dependencies for UI layout, animation, or styling unless explicitly requested.
+- Verify frontend UI changes with `npm --prefix shopanime_fe run typecheck` and run `npm --prefix shopanime_fe run build` when feasible.

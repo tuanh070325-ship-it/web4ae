@@ -1,23 +1,26 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CatalogService } from './catalog.service.js';
 import { AuthGuard, AdminGuard } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller()
 export class CatalogController {
   constructor(@Inject(CatalogService) private readonly catalogService: CatalogService) {
-    this.getProducts = this.getProducts.bind(this);
-    this.getProduct = this.getProduct.bind(this);
-    this.createProduct = this.createProduct.bind(this);
-    this.updateProduct = this.updateProduct.bind(this);
-    this.deleteProduct = this.deleteProduct.bind(this);
-    this.getCategories = this.getCategories.bind(this);
-    this.createCategory = this.createCategory.bind(this);
-    this.updateCategory = this.updateCategory.bind(this);
-    this.deleteCategory = this.deleteCategory.bind(this);
-    this.getAuthors = this.getAuthors.bind(this);
-    this.createAuthor = this.createAuthor.bind(this);
-    this.updateAuthor = this.updateAuthor.bind(this);
-    this.deleteAuthor = this.deleteAuthor.bind(this);
+    bindControllerMethods(this, [
+      'getProducts',
+      'getProduct',
+      'createProduct',
+      'updateProduct',
+      'deleteProduct',
+      'getCategories',
+      'createCategory',
+      'updateCategory',
+      'deleteCategory',
+      'getAuthors',
+      'createAuthor',
+      'updateAuthor',
+      'deleteAuthor',
+    ]);
   }
 
   @Get('products')

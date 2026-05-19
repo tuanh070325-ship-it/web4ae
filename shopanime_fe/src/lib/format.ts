@@ -66,6 +66,36 @@ export function hasProductDiscount(product: Product): boolean {
   return Boolean(product.has_discount) || getProductDiscountPercent(product) > 0 || getProductDiscountAmount(product) > 0;
 }
 
+export function getProductShippingFee(product: Product): number {
+  return Math.max(0, toNumber(product.shipping_fee));
+}
+
+export function getProductShippingDiscountPercent(product: Product): number {
+  const discountPercent = toNumber(product.shipping_discount_percent, 0);
+  return Math.round(Math.min(100, Math.max(0, discountPercent)));
+}
+
+export function getProductFinalShippingFee(product: Product): number {
+  const finalFee = toNumber(product.shipping_final_fee, NaN);
+  if (Number.isFinite(finalFee) && finalFee >= 0) {
+    return finalFee;
+  }
+
+  return Math.max(0, getProductShippingFee(product) * (1 - getProductShippingDiscountPercent(product) / 100));
+}
+
+export function getProductShippingDiscountAmount(product: Product): number {
+  return Math.max(0, getProductShippingFee(product) - getProductFinalShippingFee(product));
+}
+
+export function hasProductShippingDiscount(product: Product): boolean {
+  return getProductShippingDiscountPercent(product) > 0 || getProductShippingDiscountAmount(product) > 0;
+}
+
+export function formatShippingFee(value: ApiNumber | null | undefined): string {
+  return toNumber(value) <= 0 ? "Freeship" : formatUsd(value);
+}
+
 export function getProductImage(product: Product): string {
   return product.image || product.image_url || "";
 }

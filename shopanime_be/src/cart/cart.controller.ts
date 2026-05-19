@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
 import { CartService } from './cart.service.js';
 import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('cart')
 export class CartController {
-  constructor(private readonly cartService: CartService) {}
+  constructor(@Inject(CartService) private readonly cartService: CartService) {
+    bindControllerMethods(this, [
+      'getMyCart',
+      'getCart',
+      'addMyCartItem',
+      'addToCart',
+      'updateMyCartItem',
+      'updateCart',
+      'removeMyCartItem',
+      'clearMyCart',
+      'removeFromCart',
+    ]);
+  }
 
   @Get()
   @UseGuards(AuthGuard)

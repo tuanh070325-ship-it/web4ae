@@ -12,6 +12,9 @@ interface ProductInput {
   discount_percent?: unknown;
   price?: unknown;
   discount_price?: unknown;
+  shipping_fee?: unknown;
+  shipping_discount_percent?: unknown;
+  shipping_final_fee?: unknown;
   image_url?: unknown;
   description?: unknown;
   stock_quantity?: unknown;
@@ -138,11 +141,29 @@ function validatePricing(originalPrice: number, discountPercent: number) {
   }
 }
 
+function validateShipping(shippingFee: number, shippingDiscountPercent: number) {
+  if (!Number.isFinite(shippingFee) || shippingFee < 0) {
+    throw new BadRequestException('Shipping fee cannot be negative');
+  }
+  if (!Number.isFinite(shippingDiscountPercent) || shippingDiscountPercent < 0 || shippingDiscountPercent > 100) {
+    throw new BadRequestException('Shipping discount percent must be between 0 and 100');
+  }
+}
+
 function deriveDiscountPercent(originalPrice: number, discountPrice: number | null) {
   if (discountPrice === null || discountPrice <= 0 || discountPrice >= originalPrice) {
     return 0;
   }
   return roundCurrency(((originalPrice - discountPrice) / originalPrice) * 100);
+}
+
+function buildShipping(shippingFee: number, shippingDiscountPercent: number) {
+  validateShipping(shippingFee, shippingDiscountPercent);
+  return {
+    shippingFee: roundCurrency(shippingFee),
+    shippingDiscountPercent: roundCurrency(shippingDiscountPercent),
+    shippingFinalFee: roundCurrency(shippingFee * (1 - shippingDiscountPercent / 100)),
+  };
 }
 
 function buildPricing(originalPrice: number, discountPercent: number) {
@@ -154,6 +175,10 @@ function buildPricing(originalPrice: number, discountPercent: number) {
     finalPrice,
     discountPrice: discountPercent > 0 ? finalPrice : null,
   };
+}
+
+function createShipping(body: ProductInput) {
+  return buildShipping(nullableNumber(body.shipping_fee) ?? 0, nullableNumber(body.shipping_discount_percent) ?? 0);
 }
 
 function createPricing(body: ProductInput) {
@@ -360,6 +385,7 @@ export class CatalogService {
     const name = nullableString(body.name);
     const slug = nullableString(body.slug);
     const pricing = createPricing(body);
+    const shipping = createShipping(body);
     const stockQuantity = nullableNumber(body.stock_quantity) ?? 0;
 
     if (!name) {
@@ -374,8 +400,8 @@ export class CatalogService {
       `
         INSERT INTO products (
           name, slug, author_id, category_id, publisher_id, original_price, discount_percent, price, discount_price,
-          image_url, description, stock_quantity, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shipping_fee, shipping_discount_percent, shipping_final_fee, image_url, description, stock_quantity, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         name,
@@ -387,6 +413,9 @@ export class CatalogService {
         pricing.discountPercent,
         pricing.finalPrice,
         pricing.discountPrice,
+        shipping.shippingFee,
+        shipping.shippingDiscountPercent,
+        shipping.shippingFinalFee,
         nullableString(body.image_url),
         nullableString(body.description),
         stockQuantity,
@@ -410,6 +439,9 @@ export class CatalogService {
       || hasField(body, 'discount_percent')
       || hasField(body, 'price')
       || hasField(body, 'discount_price');
+    const hasShippingChange = hasField(body, 'shipping_fee')
+      || hasField(body, 'shipping_discount_percent')
+      || hasField(body, 'shipping_final_fee');
 
     if (body.name !== undefined && !name) {
       throw new BadRequestException('Product name cannot be empty');
@@ -420,6 +452,7 @@ export class CatalogService {
     }
 
     let pricing: ReturnType<typeof buildPricing> | null = null;
+    let shipping: ReturnType<typeof buildShipping> | null = null;
     if (hasPricingChange) {
       const existing = await this.db.one<RowDataPacket & {
         original_price: number | string | null;
@@ -452,6 +485,26 @@ export class CatalogService {
       pricing = buildPricing(originalPrice, discountPercent);
     }
 
+    if (hasShippingChange) {
+      const existing = await this.db.one<RowDataPacket & {
+        shipping_fee: number | string | null;
+        shipping_discount_percent: number | string | null;
+      }>('SELECT shipping_fee, shipping_discount_percent FROM products WHERE id = ?', [id]);
+
+      if (!existing) {
+        throw new NotFoundException('Product not found');
+      }
+
+      const shippingFee = hasField(body, 'shipping_fee')
+        ? nullableNumber(body.shipping_fee) ?? 0
+        : nullableNumber(existing.shipping_fee) ?? 0;
+      const shippingDiscountPercent = hasField(body, 'shipping_discount_percent')
+        ? nullableNumber(body.shipping_discount_percent) ?? 0
+        : nullableNumber(existing.shipping_discount_percent) ?? 0;
+
+      shipping = buildShipping(shippingFee, shippingDiscountPercent);
+    }
+
     const updates: string[] = [];
     const params: Array<string | number | null> = [];
     const pushUpdate = (sql: string, value: string | number | null | undefined) => {
@@ -468,6 +521,11 @@ export class CatalogService {
       pushUpdate('discount_percent = ?', pricing.discountPercent);
       pushUpdate('price = ?', pricing.finalPrice);
       pushUpdate('discount_price = ?', pricing.discountPrice);
+    }
+    if (shipping) {
+      pushUpdate('shipping_fee = ?', shipping.shippingFee);
+      pushUpdate('shipping_discount_percent = ?', shipping.shippingDiscountPercent);
+      pushUpdate('shipping_final_fee = ?', shipping.shippingFinalFee);
     }
     pushUpdate('status = ?', status);
     pushUpdate('image_url = ?', imageUrl);

@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { apiDelete, apiGet, apiPut } from "../lib/api";
-import { formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductImage, getProductOriginalPrice, getProductPath, hasProductDiscount } from "../lib/format";
+import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from "../lib/format";
 import type { ApiResponse, CartItem } from "../lib/types";
 
-const SHIPPING_FEE = 15;
 const VAT_RATE = 0.1;
 
 export function Cart() {
@@ -38,16 +37,30 @@ export function Cart() {
     () => items.reduce((sum, item) => sum + getProductDiscountAmount(item) * item.quantity, 0),
     [items],
   );
+  const originalShipping = useMemo(
+    () => items.reduce((sum, item) => sum + getProductShippingFee(item), 0),
+    [items],
+  );
+  const shipping = useMemo(
+    () => items.reduce((sum, item) => sum + getProductFinalShippingFee(item), 0),
+    [items],
+  );
+  const shippingSavings = useMemo(
+    () => items.reduce((sum, item) => sum + getProductShippingDiscountAmount(item), 0),
+    [items],
+  );
   const vat = subtotal * VAT_RATE;
-  const total = subtotal + (items.length ? SHIPPING_FEE : 0) + vat;
+  const total = subtotal + shipping + vat;
 
   const updateQuantity = async (item: CartItem, quantity: number) => {
     await apiPut(`/cart/items/${item.id}`, { quantity });
+    window.dispatchEvent(new Event("akibacore:cart-updated"));
     await loadCart();
   };
 
   const removeItem = async (item: CartItem) => {
     await apiDelete(`/cart/items/${item.id}`);
+    window.dispatchEvent(new Event("akibacore:cart-updated"));
     await loadCart();
   };
 
@@ -133,8 +146,21 @@ export function Cart() {
               )}
               <div className="flex justify-between items-center text-white">
                 <span className="font-medium text-white">Shipping</span>
-                <span className="font-bold">{formatUsd(items.length ? SHIPPING_FEE : 0)}</span>
+                <span className="font-bold">
+                  {shippingSavings > 0 && originalShipping > shipping && (
+                    <span className="mr-2 text-sm text-zinc-500 line-through">{formatUsd(originalShipping)}</span>
+                  )}
+                  <span className={shipping <= 0 && items.length > 0 ? "uppercase text-[#9bdcff]" : ""}>
+                    {items.length ? formatShippingFee(shipping) : formatUsd(0)}
+                  </span>
+                </span>
               </div>
+              {shippingSavings > 0 && (
+                <div className="flex justify-between items-center text-[#9bdcff]">
+                  <span className="font-medium">Shipping saved</span>
+                  <span className="font-bold">-{formatUsd(shippingSavings)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-white">
                 <span className="font-medium text-white">VAT (10%)</span>
                 <span className="font-bold">{formatUsd(vat)}</span>

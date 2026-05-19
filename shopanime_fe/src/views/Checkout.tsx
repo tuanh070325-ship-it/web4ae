@@ -1,15 +1,22 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CreditCard } from "lucide-react";
 import { apiGet, apiPost } from "../lib/api";
-import { formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductImage, getProductOriginalPrice, hasProductDiscount } from "../lib/format";
-import type { ApiMutationResponse, ApiResponse, CartItem } from "../lib/types";
+import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from "../lib/format";
+import type { ApiMutationResponse, ApiResponse, CartItem, Product } from "../lib/types";
 
-const SHIPPING_FEE = 15;
+const BUY_NOW_CHECKOUT_KEY = "akibacore.buyNowCheckout";
+
+interface BuyNowCheckoutItem extends Product {
+  cart_item_id: number;
+  quantity: number;
+}
 
 export function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
   const [form, setForm] = useState({
     receiver_name: "",
     receiver_phone: "",
@@ -21,22 +28,63 @@ export function Checkout() {
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const isBuyNowCheckout = new URLSearchParams(location.search).get("buyNow") === "1";
+  const checkoutItems = buyNowItem ? [buyNowItem] : items;
 
   useEffect(() => {
+    if (isBuyNowCheckout) {
+      const storedBuyNow = sessionStorage.getItem(BUY_NOW_CHECKOUT_KEY);
+      if (!storedBuyNow) {
+        setError("Buy now item is no longer available. Please choose the product again.");
+        setBuyNowItem(null);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(storedBuyNow) as { product?: Product; quantity?: number };
+        if (!parsed.product?.id) {
+          throw new Error("Invalid buy now item");
+        }
+        setBuyNowItem({
+          ...parsed.product,
+          cart_item_id: parsed.product.id,
+          quantity: Math.max(1, Number(parsed.quantity || 1)),
+        });
+      } catch {
+        sessionStorage.removeItem(BUY_NOW_CHECKOUT_KEY);
+        setError("Buy now item is invalid. Please choose the product again.");
+        setBuyNowItem(null);
+      }
+      return;
+    }
+
+    setBuyNowItem(null);
     apiGet<ApiResponse<CartItem[]>>("/cart")
       .then((response) => setItems(response.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to load cart"));
-  }, []);
+  }, [isBuyNowCheckout]);
 
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + getProductFinalPrice(item) * item.quantity, 0),
-    [items],
+    () => checkoutItems.reduce((sum, item) => sum + getProductFinalPrice(item) * item.quantity, 0),
+    [checkoutItems],
   );
   const productSavings = useMemo(
-    () => items.reduce((sum, item) => sum + getProductDiscountAmount(item) * item.quantity, 0),
-    [items],
+    () => checkoutItems.reduce((sum, item) => sum + getProductDiscountAmount(item) * item.quantity, 0),
+    [checkoutItems],
   );
-  const total = subtotal + (items.length ? SHIPPING_FEE : 0);
+  const originalShipping = useMemo(
+    () => checkoutItems.reduce((sum, item) => sum + getProductShippingFee(item), 0),
+    [checkoutItems],
+  );
+  const shipping = useMemo(
+    () => checkoutItems.reduce((sum, item) => sum + getProductFinalShippingFee(item), 0),
+    [checkoutItems],
+  );
+  const shippingSavings = useMemo(
+    () => checkoutItems.reduce((sum, item) => sum + getProductShippingDiscountAmount(item), 0),
+    [checkoutItems],
+  );
+  const total = subtotal + shipping;
 
   const updateField = (name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }));
@@ -50,7 +98,13 @@ export function Checkout() {
       const response = await apiPost<ApiMutationResponse<{ orderId: number }>>("/orders/checkout", {
         ...form,
         shipping_method: "STANDARD",
+        items: buyNowItem ? [{ product_id: buyNowItem.id, quantity: buyNowItem.quantity }] : undefined,
       });
+      if (buyNowItem) {
+        sessionStorage.removeItem(BUY_NOW_CHECKOUT_KEY);
+      } else {
+        window.dispatchEvent(new Event("akibacore:cart-updated"));
+      }
       navigate("/orders", { replace: true, state: { orderId: response.data?.orderId } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to place order");
@@ -114,7 +168,7 @@ export function Checkout() {
             <div className="bg-[#1a1b22] px-6 py-8 rounded-2xl border border-[#2e333d]">
               <h2 className="text-[20px] text-white font-medium mb-6">Order Review</h2>
               <div className="space-y-4 mb-8">
-                {items.map((item) => (
+                {checkoutItems.map((item) => (
                   <div key={item.cart_item_id} className="flex items-center gap-4">
                     <div className="w-14 h-16 bg-white rounded overflow-hidden flex items-center justify-center">
                       <img src={getProductImage(item)} alt={item.name} className="object-contain w-full h-full p-1" />
@@ -138,12 +192,28 @@ export function Checkout() {
                 {productSavings > 0 && (
                   <div className="flex justify-between text-[#ff8aa0]"><span>Manga drop saved:</span><span>-{formatUsd(productSavings)}</span></div>
                 )}
-                <div className="flex justify-between"><span className="text-[#a0a5b1]">Shipping:</span><span>{formatUsd(items.length ? SHIPPING_FEE : 0)}</span></div>
+                {shippingSavings > 0 && (
+                  <div className="flex justify-between text-[#9bdcff]">
+                    <span>Shipping saved:</span>
+                    <span>-{formatUsd(shippingSavings)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-[#a0a5b1]">Shipping:</span>
+                  <span>
+                    {shippingSavings > 0 && originalShipping > shipping && (
+                      <span className="mr-2 text-zinc-600 line-through">{formatUsd(originalShipping)}</span>
+                    )}
+                    <span className={shipping <= 0 && checkoutItems.length > 0 ? "font-black uppercase text-[#9bdcff]" : ""}>
+                      {checkoutItems.length ? formatShippingFee(shipping) : formatUsd(0)}
+                    </span>
+                  </span>
+                </div>
                 <div className="flex justify-between font-bold text-base mt-2 pt-2"><span>Total:</span><span>{formatUsd(total)}</span></div>
               </div>
 
               {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-              <button disabled={submitting || items.length === 0} className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium py-3 rounded-lg transition-colors text-[15px]">
+              <button disabled={submitting || checkoutItems.length === 0} className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium py-3 rounded-lg transition-colors text-[15px]">
                 {submitting ? "Placing Order..." : "Place Order"}
               </button>
             </div>

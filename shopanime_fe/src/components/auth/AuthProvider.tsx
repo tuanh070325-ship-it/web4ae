@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { apiGet, apiPost, clearAuthToken, getAuthToken, setAuthToken } from "../../lib/api";
+import { ApiError, apiGet, apiPost, clearAuthToken, getAuthToken, setAuthToken } from "../../lib/api";
 import type { ApiResponse, AuthSession, User } from "../../lib/types";
 
 interface AuthContextValue {
@@ -36,13 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await apiGet<ApiResponse<User>>("/auth/me");
+      const response = await apiGet<ApiResponse<User>>("/auth/me", { suppressUnauthorizedEvent: true });
       setUser(response.data);
       setToken(getAuthToken());
-    } catch {
+    } catch (err) {
       clearAuthToken();
       setUser(null);
       setToken(null);
+      if (!(err instanceof ApiError && err.status === 401)) {
+        console.error("Unable to refresh auth session:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -72,7 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (getAuthToken()) {
-        await apiPost("/auth/logout");
+        await apiPost("/auth/logout", undefined, { suppressUnauthorizedEvent: true });
+      }
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 401)) {
+        console.error("Unable to complete logout request:", err);
       }
     } finally {
       clearAuthToken();

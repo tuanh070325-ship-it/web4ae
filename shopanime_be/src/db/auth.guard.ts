@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, createParamDecorator } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, createParamDecorator, Inject } from '@nestjs/common';
 import { DbService } from './db.service.js';
 import { verifyAuthToken } from '../auth/token.js';
 
@@ -11,7 +11,7 @@ export interface RequestUser {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly dbService: DbService) {}
+  constructor(@Inject(DbService) private readonly dbService: DbService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();

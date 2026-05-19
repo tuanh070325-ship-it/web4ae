@@ -1,11 +1,15 @@
 import { motion } from "motion/react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Truck } from "lucide-react";
 import {
+  formatShippingFee,
   formatUsd,
   getProductDiscountAmount,
   getProductDiscountPercent,
   getProductFinalPrice,
+  getProductFinalShippingFee,
   getProductOriginalPrice,
+  getProductShippingDiscountPercent,
+  getProductShippingFee,
   hasProductDiscount,
 } from "../../lib/format";
 import type { Product } from "../../lib/types";
@@ -22,13 +26,25 @@ export function ProductDealPrice({ product, align = "left", compact = false }: P
   const originalPrice = getProductOriginalPrice(product);
   const discountPercent = getProductDiscountPercent(product);
   const discountAmount = getProductDiscountAmount(product);
+  const shippingFee = getProductShippingFee(product);
+  const finalShippingFee = getProductFinalShippingFee(product);
+  const shippingDiscountPercent = getProductShippingDiscountPercent(product);
+  const showShippingDeal = shippingFee > 0 || finalShippingFee <= 0;
   const alignment = align === "center" ? "items-center text-center" : "items-start text-left";
   const priceSize = compact ? "text-[22px]" : "text-2xl";
+  const shippingBadge = showShippingDeal ? (
+    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#5ea5c8]/40 bg-[#5ea5c8]/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-[#9bdcff]">
+      <Truck className="h-3 w-3" />
+      {finalShippingFee <= 0 ? "Freeship" : formatShippingFee(finalShippingFee)}
+      {shippingDiscountPercent > 0 && finalShippingFee > 0 ? ` -${shippingDiscountPercent}%` : ""}
+    </span>
+  ) : null;
 
   if (!discounted) {
     return (
       <div className={`flex flex-col ${alignment}`}>
         <span className={`${priceSize} font-black leading-none text-white`}>{formatUsd(finalPrice)}</span>
+        {shippingBadge}
       </div>
     );
   }
@@ -64,6 +80,7 @@ export function ProductDealPrice({ product, align = "left", compact = false }: P
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#ff315a] via-[#f5a623] to-[#5ea5c8] opacity-45" />
       </div>
+      {shippingBadge}
     </div>
   );
 }

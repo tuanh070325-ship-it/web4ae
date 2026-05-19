@@ -53,6 +53,7 @@ These instructions are for AI coding agents working in this repository. They ada
 - Preserve the existing Next.js + React + Tailwind stack.
 - Use existing helpers in `shopanime_fe/src/lib` before adding new utilities.
 - Use `lucide-react` icons when an icon is needed.
+- For visual UI work, read `DESIGN.md` first and keep mobile-first catalog UX: drawers/collapsible panels for secondary navigation and filters, product content visible without excessive pre-content scrolling.
 - Keep product/category/order fields aligned with backend query aliases, especially `image` vs `image_url`, `author` vs `author_name`, and DECIMAL values.
 - Do not add app-wide state management unless a task clearly requires shared mutable state.
 

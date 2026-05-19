@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Edit, Search, Trash2, X } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut } from "../lib/api";
-import { formatUsd, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, hasProductDiscount, toNumber } from "../lib/format";
+import { formatShippingFee, formatUsd, getProductDiscountPercent, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountPercent, getProductShippingFee, hasProductDiscount, toNumber } from "../lib/format";
 import type { ApiResponse, Author, Category, PaginatedApiResponse, PaginationMeta, Product } from "../lib/types";
 import { AdminPage, AdminTable, adminFormClass, adminIconButtonClass, adminInputClass, adminPrimaryButtonClass, adminSecondaryButtonClass, adminTdClass, adminTextareaClass, adminThClass } from "../components/admin/AdminUI";
 import { Pagination } from "../components/ui/Pagination";
@@ -14,6 +14,8 @@ interface ProductForm {
   author_id: string;
   original_price: string;
   discount_percent: string;
+  shipping_fee: string;
+  shipping_discount_percent: string;
   stock_quantity: string;
   image_url: string;
   description: string;
@@ -27,6 +29,8 @@ const emptyForm: ProductForm = {
   author_id: "",
   original_price: "",
   discount_percent: "0",
+  shipping_fee: "0",
+  shipping_discount_percent: "0",
   stock_quantity: "0",
   image_url: "",
   description: "",
@@ -48,6 +52,15 @@ function calculateFinalPrice(originalPrice: string, discountPercent: string) {
     return 0;
   }
   return Math.round(original * (1 - Math.min(discount, 95) / 100) * 100) / 100;
+}
+
+function calculateFinalShippingFee(shippingFee: string, shippingDiscountPercent: string) {
+  const fee = Number(shippingFee || 0);
+  const discount = Number(shippingDiscountPercent || 0);
+  if (!Number.isFinite(fee) || fee < 0 || !Number.isFinite(discount) || discount < 0) {
+    return 0;
+  }
+  return Math.round(fee * (1 - Math.min(discount, 100) / 100) * 100) / 100;
 }
 
 export function AdminProducts() {
@@ -98,6 +111,7 @@ export function AdminProducts() {
 
   const visibleProducts = useMemo(() => products, [products]);
   const previewFinalPrice = calculateFinalPrice(form.original_price, form.discount_percent);
+  const previewFinalShippingFee = calculateFinalShippingFee(form.shipping_fee, form.shipping_discount_percent);
 
   const changePage = (nextPage: number) => {
     setPage(nextPage);
@@ -117,6 +131,8 @@ export function AdminProducts() {
       author_id: form.author_id ? Number(form.author_id) : null,
       original_price: Number(form.original_price),
       discount_percent: Number(form.discount_percent || 0),
+      shipping_fee: Number(form.shipping_fee || 0),
+      shipping_discount_percent: Number(form.shipping_discount_percent || 0),
       stock_quantity: Number(form.stock_quantity),
       image_url: form.image_url.trim() || null,
       description: form.description.trim() || null,
@@ -144,6 +160,8 @@ export function AdminProducts() {
       author_id: product.author_id ? String(product.author_id) : "",
       original_price: String(getProductOriginalPrice(product)),
       discount_percent: String(toNumber(product.discount_percent, getProductDiscountPercent(product))),
+      shipping_fee: String(getProductShippingFee(product)),
+      shipping_discount_percent: String(toNumber(product.shipping_discount_percent, getProductShippingDiscountPercent(product))),
       stock_quantity: String(product.stock_quantity),
       image_url: product.image_url || product.image || "",
       description: product.description || "",
@@ -179,6 +197,8 @@ export function AdminProducts() {
         </select>
         <input required value={form.original_price} onChange={(event) => updateField("original_price", event.target.value)} placeholder="Original price" type="number" min="0.01" step="0.01" className={adminInputClass} />
         <input value={form.discount_percent} onChange={(event) => updateField("discount_percent", event.target.value)} placeholder="Discount %" type="number" min="0" max="95" step="0.01" className={adminInputClass} />
+        <input value={form.shipping_fee} onChange={(event) => updateField("shipping_fee", event.target.value)} placeholder="Shipping fee" type="number" min="0" step="0.01" className={adminInputClass} />
+        <input value={form.shipping_discount_percent} onChange={(event) => updateField("shipping_discount_percent", event.target.value)} placeholder="Ship discount %" type="number" min="0" max="100" step="0.01" className={adminInputClass} />
         <input value={form.stock_quantity} onChange={(event) => updateField("stock_quantity", event.target.value)} placeholder="Stock" type="number" min="0" className={adminInputClass} />
         <select value={form.status} onChange={(event) => updateField("status", event.target.value)} className={adminInputClass}>
           <option value="ACTIVE">Active</option>
@@ -193,6 +213,16 @@ export function AdminProducts() {
           {Number(form.discount_percent || 0) > 0 && (
             <span className="ml-2 text-zinc-500">
               from <span className="line-through">{formatUsd(Number(form.original_price || 0))}</span>
+            </span>
+          )}
+        </div>
+        <div className="md:col-span-4 rounded border border-[#5ea5c8]/30 bg-[#5ea5c8]/5 px-4 py-3 text-sm text-zinc-300">
+          <span className="font-semibold text-white">Auto shipping preview:</span>{" "}
+          <span className="font-black text-[#9bdcff]">{formatShippingFee(previewFinalShippingFee)}</span>
+          {Number(form.shipping_discount_percent || 0) > 0 && Number(form.shipping_fee || 0) > 0 && (
+            <span className="ml-2 text-zinc-500">
+              from <span className="line-through">{formatUsd(Number(form.shipping_fee || 0))}</span>
+              <span className="ml-2 text-[#9bdcff]">-{Math.round(Number(form.shipping_discount_percent || 0))}% ship</span>
             </span>
           )}
         </div>
@@ -253,6 +283,15 @@ export function AdminProducts() {
                       <span className="ml-1">-{getProductDiscountPercent(product)}%</span>
                     </div>
                   )}
+                  <div className="mt-1 text-xs text-[#9bdcff]">
+                    Ship: {formatShippingFee(getProductFinalShippingFee(product))}
+                    {getProductShippingDiscountPercent(product) > 0 && (
+                      <span className="ml-1 text-zinc-500">
+                        <span className="line-through">{formatUsd(getProductShippingFee(product))}</span>
+                        <span className="ml-1 text-[#9bdcff]">-{getProductShippingDiscountPercent(product)}%</span>
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className={adminTdClass}>{product.stock_quantity}</td>
                 <td className={adminTdClass}>

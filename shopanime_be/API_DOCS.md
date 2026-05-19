@@ -133,6 +133,9 @@ Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
         "discount_price": "13.99",
         "discount_amount": "6.00",
         "has_discount": 1,
+        "shipping_fee": "5.99",
+        "shipping_discount_percent": "100.00",
+        "shipping_final_fee": "0.00",
         "average_rating": "5.0000",
         "review_count": 1,
         "external_rating": "9.47",
@@ -162,8 +165,9 @@ Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
 ### 2.3 Thêm sản phẩm (Admin)
 - **Endpoint:** `POST /api/products`
 - **Header:** Bắt buộc quyền Admin
-- **Body Params:** `name`, `slug`, `author_id`, `category_id`, `original_price`, `discount_percent`, `image_url`, `description`, `stock_quantity`, `status`
+- **Body Params:** `name`, `slug`, `author_id`, `category_id`, `original_price`, `discount_percent`, `shipping_fee`, `shipping_discount_percent`, `image_url`, `description`, `stock_quantity`, `status`
 - **Pricing Rule:** Admin nhap `original_price` va `discount_percent`; backend tu tinh `price = original_price * (1 - discount_percent / 100)`. `discount_percent` hop le tu `0` den `95`. `discount_price` chi giu de tuong thich response cu, client khong can nhap thu cong.
+- **Shipping Rule:** Admin nhap `shipping_fee` va `shipping_discount_percent`; backend tu tinh `shipping_final_fee = shipping_fee * (1 - shipping_discount_percent / 100)`. `shipping_discount_percent` hop le tu `0` den `100`; `100` nghia la freeship. Client khong can gui `shipping_final_fee`.
 - **Example Body:**
   ```json
   {
@@ -173,6 +177,8 @@ Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
     "category_id": 2,
     "original_price": 49.99,
     "discount_percent": 24,
+    "shipping_fee": 5.99,
+    "shipping_discount_percent": 100,
     "stock_quantity": 21,
     "image_url": "https://example.com/berserk.jpg",
     "description": "Dark fantasy manga volume.",
@@ -183,6 +189,7 @@ Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
 ### 2.4 Sửa thông tin sản phẩm (Admin)
 - **Endpoint:** `PUT /api/products/:id`
 - **Pricing Update:** Gui `original_price` hoac `discount_percent` se lam backend tinh lai `price` va `discount_price`. Neu khong gui hai truong nay thi gia duoc giu nguyen.
+- **Shipping Update:** Gui `shipping_fee` hoac `shipping_discount_percent` se lam backend tinh lai `shipping_final_fee`. Neu `shipping_final_fee = 0`, frontend nen hien thi `Freeship`.
 - **Header:** Bắt buộc quyền Admin
 
 ### 2.5 Xóa sản phẩm (Admin)
@@ -253,13 +260,24 @@ Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
     "shipping_method": "STANDARD"
   }
   ```
+- **Buy Now Body:** Neu chi mua ngay mot san pham, gui them `items`. Backend se tao order tu `items` va khong xoa cart hien co.
+  ```json
+  {
+    "receiver_name": "A",
+    "receiver_phone": "0987654321",
+    "shipping_address_line": "123 ABC",
+    "shipping_city": "HCM",
+    "shipping_method": "STANDARD",
+    "items": [{ "product_id": 1, "quantity": 1 }]
+  }
+  ```
 - **cURL:**
   ```bash
   curl -X POST http://localhost:4000/api/orders/checkout \
   -H "Content-Type: application/json" \
   -d '{"user_id":1,"receiver_name":"A","receiver_phone":"098","shipping_address_line":"x","shipping_city":"y"}'
   ```
-- **Tính năng Backend Checkout:** Backend sẽ map với Carts của user, kiểm tra và trừ tồn kho (stock_quantity), lưu Transaction Inventory, tính Total tự động và xóa Giỏ Hàng.
+- **Tính năng Backend Checkout:** Backend sẽ map với Carts của user hoặc `items` của Buy Now, kiểm tra và trừ tồn kho (stock_quantity), lưu Transaction Inventory, tính Total tự động. Phí ship đơn hàng lấy từ tổng `shipping_final_fee` của từng dòng sản phẩm; checkout từ cart sẽ xóa Giỏ Hàng, Buy Now giữ nguyên cart hiện có.
 
 ### 3.5 Lấy lịch sử đơn hàng của User
 - **Endpoint:** `GET /api/orders/user/:userId`

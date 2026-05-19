@@ -1,5 +1,5 @@
 ---
-description: AkibaCore coding-agent rules for simple, surgical, verified changes across the NestJS backend and React/Vite frontend.
+description: AkibaCore coding-agent rules for simple, surgical, verified changes across the NestJS backend and Next.js/React frontend.
 alwaysApply: true
 ---
 
@@ -19,9 +19,10 @@ Apply these rules whenever writing, reviewing, or refactoring code in this repos
 ## Project Context
 
 - Backend: `shopanime_be`, NestJS, MySQL, API under `/api`.
-- Frontend: `shopanime_fe`, React 19, Vite, Tailwind, React Router.
+- Frontend: `shopanime_fe`, Next.js, React 19, Tailwind, React Router client shell.
 - Frontend shared API types: `shopanime_fe/src/lib/types.ts`.
 - Frontend formatting helpers: `shopanime_fe/src/lib/format.ts`.
+- Frontend UI design source: `DESIGN.md`.
 - Backend API/schema docs: `shopanime_be/API_DOCS.md`, `shopanime_be/database_schema.md`.
 
 ## TypeScript Rules
@@ -43,5 +44,5 @@ Apply these rules whenever writing, reviewing, or refactoring code in this repos
 ## Safety Notes
 
 - Do not run destructive schema rebuilds unless explicitly requested.
-- Do not remove `shopanime_fe/index.html`; Vite needs it as the app entry.
+- Do not bypass `shopanime_fe/src/app`; Next.js uses it as the app entry.
 - Do not edit `.env` secrets unless the user specifically asks.

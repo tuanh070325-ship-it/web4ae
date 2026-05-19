@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
 import { User, ShoppingBag, Heart, Settings } from "lucide-react";
 import { apiPut } from "../lib/api";
 import { useAuth } from "../components/auth/AuthProvider";
@@ -35,14 +36,21 @@ export function Profile() {
     setMessage("Profile updated");
   };
 
+  const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `w-full flex items-center gap-3 px-5 py-3 rounded-full font-medium transition-colors ${
+      isActive
+        ? "bg-[#b0222e] text-white"
+        : "text-[#a0a5b1] hover:text-white hover:bg-[#24262f]"
+    }`;
+
   return (
-    <form onSubmit={saveProfile} className="w-full bg-[#1e2128] min-h-[calc(100vh-72px)] p-8 flex justify-center items-start overflow-hidden">
+    <div className="w-full bg-[#1e2128] min-h-[calc(100vh-72px)] p-8 flex justify-center items-start overflow-hidden">
       <div className="w-full max-w-[1200px] bg-[#141518] rounded-2xl overflow-hidden shadow-2xl border border-[#2e333d]">
         
         {/* Banner */}
         <div className="h-48 w-full relative">
           <img 
-            src="https://images.unsplash.com/photo-1614595225026-6b2ad60e86b0?q=80&w=1200&auto=format&fit=crop" 
+            src="https://as2.ftcdn.net/v2/jpg/06/83/50/89/1000_F_683508986_x1qzMyQWD3REAulaIOykkwf04iTXdpFO.jpg" 
             alt="Banner" 
             className="w-full h-full object-cover filter brightness-50"
           />
@@ -70,26 +78,26 @@ export function Profile() {
             
             {/* Sidebar */}
             <div className="w-full md:w-56 space-y-2">
-              <button className="w-full flex items-center gap-3 px-5 py-3 bg-[#b0222e] text-white rounded-full font-medium transition-colors">
+              <NavLink to="/profile" className={sidebarLinkClass}>
                 <User className="w-5 h-5" />
                 Profile Info
-              </button>
-              <button className="w-full flex items-center gap-3 px-5 py-3 text-[#a0a5b1] hover:text-white hover:bg-[#24262f] rounded-full font-medium transition-colors">
+              </NavLink>
+              <NavLink to="/orders" className={sidebarLinkClass}>
                 <ShoppingBag className="w-5 h-5" />
                 Orders
-              </button>
-              <button className="w-full flex items-center gap-3 px-5 py-3 text-[#a0a5b1] hover:text-white hover:bg-[#24262f] rounded-full font-medium transition-colors">
+              </NavLink>
+              <NavLink to="/wishlist" className={sidebarLinkClass}>
                 <Heart className="w-5 h-5" />
                 Wishlist
-              </button>
-              <button className="w-full flex items-center gap-3 px-5 py-3 text-[#a0a5b1] hover:text-white hover:bg-[#24262f] rounded-full font-medium transition-colors">
+              </NavLink>
+              <button type="button" className="w-full flex items-center gap-3 px-5 py-3 text-[#a0a5b1] hover:text-white hover:bg-[#24262f] rounded-full font-medium transition-colors">
                 <Settings className="w-5 h-5" />
                 Settings
               </button>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 space-y-6">
+            <form onSubmit={saveProfile} className="flex-1 space-y-6">
               
               {/* Personal Info */}
               <div className="bg-[#1e2128] rounded-xl p-6 border border-[#2e333d]">
@@ -156,10 +164,10 @@ export function Profile() {
                 </div>
               </div>
 
-            </div>
+            </form>
           </div>
         </div>
       </div>
-    </form>
+    </div>
   );
 }

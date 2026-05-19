@@ -40,6 +40,9 @@ export interface Product {
   discount_price?: ApiNumber | null;
   discount_amount?: ApiNumber | null;
   has_discount?: boolean | 0 | 1 | null;
+  shipping_fee?: ApiNumber | null;
+  shipping_discount_percent?: ApiNumber | null;
+  shipping_final_fee?: ApiNumber | null;
   stock_quantity: number;
   status?: string;
   image?: string | null;

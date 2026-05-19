@@ -136,6 +136,9 @@ const schemaStatements = [
     discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
     price DECIMAL(12,2) NOT NULL DEFAULT 0,
     discount_price DECIMAL(12,2) NULL,
+    shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
+    shipping_discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    shipping_final_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
     stock_quantity INT NOT NULL DEFAULT 0,
     sku VARCHAR(120) NULL UNIQUE,
     status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
@@ -308,6 +311,9 @@ const schemaStatements = [
 const productColumnMigrations = [
   { column: 'original_price', ddl: 'ADD COLUMN original_price DECIMAL(12,2) NULL AFTER description' },
   { column: 'discount_percent', ddl: 'ADD COLUMN discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER original_price' },
+  { column: 'shipping_fee', ddl: 'ADD COLUMN shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER discount_price' },
+  { column: 'shipping_discount_percent', ddl: 'ADD COLUMN shipping_discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER shipping_fee' },
+  { column: 'shipping_final_fee', ddl: 'ADD COLUMN shipping_final_fee DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER shipping_discount_percent' },
   { column: 'external_rating', ddl: 'ADD COLUMN external_rating DECIMAL(3,2) NULL AFTER review_count' },
   { column: 'external_rating_count', ddl: 'ADD COLUMN external_rating_count INT NOT NULL DEFAULT 0 AFTER external_rating' },
   { column: 'external_rating_source', ddl: 'ADD COLUMN external_rating_source VARCHAR(80) NULL AFTER external_rating_count' },
@@ -358,6 +364,17 @@ async function ensureProductColumns(db: DatabaseExecutor) {
           ELSE NULL
         END
     WHERE original_price IS NOT NULL AND original_price > 0
+  `);
+
+  await db.execute(`
+    UPDATE products
+    SET shipping_discount_percent = LEAST(GREATEST(COALESCE(shipping_discount_percent, 0), 0), 100),
+        shipping_fee = GREATEST(COALESCE(shipping_fee, 0), 0)
+  `);
+
+  await db.execute(`
+    UPDATE products
+    SET shipping_final_fee = ROUND(shipping_fee * (1 - COALESCE(shipping_discount_percent, 0) / 100), 2)
   `);
 }
 
@@ -448,8 +465,9 @@ export async function seedSchema(db: DatabaseExecutor) {
     await db.execute(
       `INSERT IGNORE INTO products (
         id, category_id, author_id, publisher_id, series_id, name, slug, isbn, book_format,
-        original_price, discount_percent, price, discount_price, stock_quantity, status, image_url, description, volume_number, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        original_price, discount_percent, price, discount_price, shipping_fee, shipping_discount_percent, shipping_final_fee,
+        stock_quantity, status, image_url, description, volume_number, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         product.id,
         product.category_id,
@@ -464,6 +482,9 @@ export async function seedSchema(db: DatabaseExecutor) {
         discountPercent,
         finalPrice,
         discountPercent > 0 ? finalPrice : null,
+        product.shipping_fee ?? 0,
+        product.shipping_discount_percent ?? 0,
+        Math.round(Number(product.shipping_fee ?? 0) * (1 - Number(product.shipping_discount_percent ?? 0) / 100) * 100) / 100,
         product.stock_quantity,
         product.status,
         product.image,

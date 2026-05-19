@@ -1,11 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
 import { WishlistService } from './wishlist.service.js';
+import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('wishlist')
 @UseGuards(AuthGuard)
 export class WishlistController {
-  constructor(private readonly wishlistService: WishlistService) {}
+  constructor(@Inject(WishlistService) private readonly wishlistService: WishlistService) {
+    bindControllerMethods(this, ['getWishlist', 'addToWishlist', 'removeFromWishlist', 'moveToCart']);
+  }
 
   @Get()
   async getWishlist(@CurrentUser() user: RequestUser) {
