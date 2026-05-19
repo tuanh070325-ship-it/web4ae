@@ -72,13 +72,13 @@ export function Register() {
     <div className="flex min-h-screen bg-[#111] font-sans text-zinc-300 lg:max-h-screen lg:overflow-hidden">
       <div className="relative hidden w-1/2 bg-zinc-900 lg:block">
         <img
-          src="https://instagram.fhan17-1.fna.fbcdn.net/v/t51.82787-15/671155843_17869809438601053_1495102613955512497_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=109&ig_cache_key=Mzg3NzUxMDc3NjI3NDMzNjA3Mg%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6IkZFRUQueHBpZHMuMjE2MC5zZHIucmVndWxhcl9waG90by5DMyJ9&_nc_ohc=xgFVGhWJs-wQ7kNvwE1lr5-&_nc_oc=AdoK2gTcE6gXXLcfcBGLq48mYxVpp54D9IupHhB2SsXaz-PfutLT9-ybA-lUqI0qPzs&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fhan17-1.fna&_nc_gid=wUXo67V89YBSod55yeE-zA&_nc_ss=7a22e&oh=00_Af73oQSyRT3_KhFms1hWr4Gqw9LJ9wYBY-6bvPxkLh2GGA&oe=6A07D838"
+          src="https://images7.alphacoders.com/140/1406134.jpg"
           alt="Characters"
           className="h-full w-full object-cover opacity-60"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-12">
-          <p className="text-sm text-zinc-500">AkibaCore - Embrace Your Dark Side</p>
+          <p className="text-sm text-zinc-500">AkibaCore</p>
         </div>
       </div>
 
