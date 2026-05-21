@@ -29,6 +29,8 @@ Backend values live in `shopanime_be/.env`.
 | `DB_REBUILD_SCHEMA` | Destructive rebuild switch |
 | `DB_SEED_ON_START` | Seed demo data when products are empty |
 | `JWT_SECRET` | Token signing secret |
+| `N8N_CHATBOT_WEBHOOK_URL` | n8n production webhook URL used by the backend chatbot proxy |
+| `N8N_CHATBOT_TIMEOUT_MS` | Timeout for chatbot webhook requests, default `30000` |
 
 Run backend independently:
 

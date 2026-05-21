@@ -7,8 +7,9 @@ import { OrdersModule } from './orders/orders.module.js';
 import { CommunityModule } from './community/community.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { WishlistModule } from './wishlist/wishlist.module.js';
+import { ChatbotModule } from './chatbot/chatbot.module.js';
 
 @Module({
-  imports: [DbModule, AuthModule, UsersModule, CatalogModule, CartModule, WishlistModule, OrdersModule, CommunityModule],
+  imports: [DbModule, AuthModule, UsersModule, CatalogModule, CartModule, WishlistModule, OrdersModule, CommunityModule, ChatbotModule],
 })
 export class AppModule {}
