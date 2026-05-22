@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Trash2 } from "lucide-react";
-import { apiDelete, apiGet, apiPut } from "../lib/api";
-import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from "../lib/format";
-import type { ApiResponse, CartItem } from "../lib/types";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
+import { apiDelete, apiGet, apiPut } from '../lib/api';
+import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from '../lib/format';
+import type { ApiResponse, CartItem } from '../lib/types';
 
 const VAT_RATE = 0.1;
 
@@ -12,18 +12,18 @@ export function Cart() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiGet<ApiResponse<CartItem[]>>("/cart");
+      const response = await apiGet<ApiResponse<CartItem[]>>('/cart');
       setItems(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load cart");
+      setError(err instanceof Error ? err.message : 'Unable to load cart');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadCart();
@@ -52,17 +52,31 @@ export function Cart() {
   const vat = subtotal * VAT_RATE;
   const total = subtotal + shipping + vat;
 
-  const updateQuantity = async (item: CartItem, quantity: number) => {
-    await apiPut(`/cart/items/${item.id}`, { quantity });
-    window.dispatchEvent(new Event("akibacore:cart-updated"));
-    await loadCart();
-  };
+  const updateQuantity = useCallback(async (item: CartItem, quantity: number) => {
+    const nextQuantity = Math.max(1, quantity);
+    setItems((current) => current.map((currentItem) => (
+      currentItem.cart_item_id === item.cart_item_id ? { ...currentItem, quantity: nextQuantity } : currentItem
+    )));
+    try {
+      await apiPut(`/cart/items/${item.id}`, { quantity: nextQuantity });
+      window.dispatchEvent(new Event('akibacore:cart-updated'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update cart');
+      await loadCart();
+    }
+  }, [loadCart]);
 
-  const removeItem = async (item: CartItem) => {
-    await apiDelete(`/cart/items/${item.id}`);
-    window.dispatchEvent(new Event("akibacore:cart-updated"));
-    await loadCart();
-  };
+  const removeItem = useCallback(async (item: CartItem) => {
+    const previousItems = items;
+    setItems((current) => current.filter((currentItem) => currentItem.cart_item_id !== item.cart_item_id));
+    try {
+      await apiDelete(`/cart/items/${item.id}`);
+      window.dispatchEvent(new Event('akibacore:cart-updated'));
+    } catch (err) {
+      setItems(previousItems);
+      setError(err instanceof Error ? err.message : 'Unable to update cart');
+    }
+  }, [items]);
 
   return (
     <div className="w-full bg-[#181a1f] min-h-[calc(100vh-72px)] text-[#a0a5b1]">
@@ -150,7 +164,7 @@ export function Cart() {
                   {shippingSavings > 0 && originalShipping > shipping && (
                     <span className="mr-2 text-sm text-zinc-500 line-through">{formatUsd(originalShipping)}</span>
                   )}
-                  <span className={shipping <= 0 && items.length > 0 ? "uppercase text-[#9bdcff]" : ""}>
+                  <span className={shipping <= 0 && items.length > 0 ? 'uppercase text-[#9bdcff]' : ''}>
                     {items.length ? formatShippingFee(shipping) : formatUsd(0)}
                   </span>
                 </span>
@@ -171,7 +185,7 @@ export function Cart() {
               </div>
             </div>
 
-            <Link to="/checkout" className={`w-full font-bold py-3.5 px-4 rounded transition-colors mt-8 text-[15px] text-center block ${items.length ? "bg-[#cc2936] hover:bg-[#b0222e] text-white" : "bg-zinc-800 text-zinc-500 pointer-events-none"}`}>
+            <Link to="/checkout" className={`w-full font-bold py-3.5 px-4 rounded transition-colors mt-8 text-[15px] text-center block ${items.length ? 'bg-[#cc2936] hover:bg-[#b0222e] text-white' : 'bg-zinc-800 text-zinc-500 pointer-events-none'}`}>
               Proceed to Checkout
             </Link>
 

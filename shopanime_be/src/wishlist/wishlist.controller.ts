@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, UseGuards } from '@nestjs/common';
-import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import type { RequestUser } from '../db/auth.guard.js';
+import { AuthGuard, CurrentUser } from '../db/auth.guard.js';
 import { WishlistService } from './wishlist.service.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
 

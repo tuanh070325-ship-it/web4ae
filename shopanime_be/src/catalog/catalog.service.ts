@@ -8,6 +8,7 @@ interface ProductInput {
   author_id?: unknown;
   category_id?: unknown;
   publisher_id?: unknown;
+  series_id?: unknown;
   original_price?: unknown;
   discount_percent?: unknown;
   price?: unknown;
@@ -37,13 +38,13 @@ interface ProductFilters {
 }
 
 function nullableString(value: unknown) {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== 'string') {return null;}
   const trimmed = value.trim();
   return trimmed || null;
 }
 
 function nullableNumber(value: unknown) {
-  if (value === null || value === undefined || value === '') return null;
+  if (value === null || value === undefined || value === '') {return null;}
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) {
     throw new BadRequestException('Invalid numeric value');
@@ -52,8 +53,26 @@ function nullableNumber(value: unknown) {
 }
 
 function optionalNumber(value: unknown) {
-  if (value === undefined) return undefined;
+  if (value === undefined) {return undefined;}
   return nullableNumber(value);
+}
+
+function nullableId(value: unknown, fieldName: string) {
+  const numberValue = nullableNumber(value);
+  if (numberValue === null) {
+    return null;
+  }
+  if (!Number.isInteger(numberValue) || numberValue <= 0) {
+    throw new BadRequestException(`${fieldName} must be a positive integer`);
+  }
+  return numberValue;
+}
+
+function optionalId(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+  return nullableId(value, fieldName);
 }
 
 function queryValue(value: string | string[] | undefined) {
@@ -70,7 +89,7 @@ function queryList(value: string | string[] | undefined) {
 
 function optionalQueryNumber(value: string | string[] | undefined, fieldName: string) {
   const rawValue = queryValue(value);
-  if (rawValue === undefined || rawValue === '') return undefined;
+  if (rawValue === undefined || rawValue === '') {return undefined;}
   const numberValue = Number(rawValue);
   if (!Number.isFinite(numberValue)) {
     throw new BadRequestException(`Invalid ${fieldName}`);
@@ -120,6 +139,14 @@ function productStatus(value: unknown) {
   const status = typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : 'ACTIVE';
   if (!['ACTIVE', 'INACTIVE', 'DRAFT', 'OUT_OF_STOCK'].includes(status)) {
     throw new BadRequestException('Invalid product status');
+  }
+  return status;
+}
+
+function categoryStatus(value: unknown) {
+  const status = typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : 'ACTIVE';
+  if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+    throw new BadRequestException('Invalid category status');
   }
   return status;
 }
@@ -195,6 +222,21 @@ function createPricing(body: ProductInput) {
 @Injectable()
 export class CatalogService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
+
+  private async assertReference(
+    table: 'authors' | 'book_series' | 'categories' | 'publishers',
+    id: number | null | undefined,
+    fieldName: string,
+  ) {
+    if (id === null || id === undefined) {
+      return;
+    }
+
+    const existing = await this.db.one(`SELECT id FROM ${table} WHERE id = ?`, [id]);
+    if (!existing) {
+      throw new BadRequestException(`${fieldName} does not exist`);
+    }
+  }
 
   async getProducts(query: Record<string, string | string[] | undefined> = {}) {
     const filters = productFilters(query);
@@ -387,6 +429,10 @@ export class CatalogService {
     const pricing = createPricing(body);
     const shipping = createShipping(body);
     const stockQuantity = nullableNumber(body.stock_quantity) ?? 0;
+    const authorId = nullableId(body.author_id, 'author_id');
+    const categoryId = nullableId(body.category_id, 'category_id');
+    const publisherId = nullableId(body.publisher_id, 'publisher_id');
+    const seriesId = nullableId(body.series_id, 'series_id');
 
     if (!name) {
       throw new BadRequestException('Product name is required');
@@ -396,19 +442,25 @@ export class CatalogService {
       throw new BadRequestException('Stock quantity cannot be negative');
     }
 
+    await this.assertReference('authors', authorId, 'author_id');
+    await this.assertReference('categories', categoryId, 'category_id');
+    await this.assertReference('publishers', publisherId, 'publisher_id');
+    await this.assertReference('book_series', seriesId, 'series_id');
+
     const result = await this.db.execute(
       `
         INSERT INTO products (
-          name, slug, author_id, category_id, publisher_id, original_price, discount_percent, price, discount_price,
+          name, slug, author_id, category_id, publisher_id, series_id, original_price, discount_percent, price, discount_price,
           shipping_fee, shipping_discount_percent, shipping_final_fee, image_url, description, stock_quantity, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         name,
         slug,
-        nullableNumber(body.author_id),
-        nullableNumber(body.category_id),
-        nullableNumber(body.publisher_id),
+        authorId,
+        categoryId,
+        publisherId,
+        seriesId,
         pricing.originalPrice,
         pricing.discountPercent,
         pricing.finalPrice,
@@ -433,8 +485,10 @@ export class CatalogService {
     const status = body.status === undefined ? undefined : productStatus(body.status);
     const imageUrl = body.image_url === undefined ? undefined : nullableString(body.image_url);
     const description = body.description === undefined ? undefined : nullableString(body.description);
-    const categoryId = optionalNumber(body.category_id);
-    const authorId = optionalNumber(body.author_id);
+    const categoryId = optionalId(body.category_id, 'category_id');
+    const authorId = optionalId(body.author_id, 'author_id');
+    const publisherId = optionalId(body.publisher_id, 'publisher_id');
+    const seriesId = optionalId(body.series_id, 'series_id');
     const hasPricingChange = hasField(body, 'original_price')
       || hasField(body, 'discount_percent')
       || hasField(body, 'price')
@@ -450,6 +504,11 @@ export class CatalogService {
     if (stockQuantity !== undefined && stockQuantity !== null && stockQuantity < 0) {
       throw new BadRequestException('Stock quantity cannot be negative');
     }
+
+    await this.assertReference('authors', authorId, 'author_id');
+    await this.assertReference('categories', categoryId, 'category_id');
+    await this.assertReference('publishers', publisherId, 'publisher_id');
+    await this.assertReference('book_series', seriesId, 'series_id');
 
     let pricing: ReturnType<typeof buildPricing> | null = null;
     let shipping: ReturnType<typeof buildShipping> | null = null;
@@ -508,7 +567,7 @@ export class CatalogService {
     const updates: string[] = [];
     const params: Array<string | number | null> = [];
     const pushUpdate = (sql: string, value: string | number | null | undefined) => {
-      if (value === undefined) return;
+      if (value === undefined) {return;}
       updates.push(sql);
       params.push(value);
     };
@@ -532,6 +591,8 @@ export class CatalogService {
     pushUpdate('description = ?', description);
     pushUpdate('category_id = ?', categoryId);
     pushUpdate('author_id = ?', authorId);
+    pushUpdate('publisher_id = ?', publisherId);
+    pushUpdate('series_id = ?', seriesId);
 
     if (updates.length === 0) {
       return;
@@ -561,13 +622,15 @@ export class CatalogService {
 
   async createCategory(body: any) {
     const name = nullableString(body.name);
+    const parentId = nullableId(body.parent_id, 'parent_id');
     if (!name) {
       throw new BadRequestException('Category name is required');
     }
+    await this.assertReference('categories', parentId, 'parent_id');
     const result = await this.db.execute('INSERT INTO categories (name, slug, parent_id, description) VALUES (?, ?, ?, ?)', [
       name,
       nullableString(body.slug),
-      nullableNumber(body.parent_id),
+      parentId,
       nullableString(body.description),
     ]);
     return result.insertId;
@@ -578,24 +641,35 @@ export class CatalogService {
     if (body.name !== undefined && !name) {
       throw new BadRequestException('Category name cannot be empty');
     }
+    const parentId = optionalId(body.parent_id, 'parent_id');
+    const categoryId = nullableId(id, 'id');
+    if (parentId !== undefined && parentId === categoryId) {
+      throw new BadRequestException('Category cannot be its own parent');
+    }
+    await this.assertReference('categories', parentId, 'parent_id');
+
+    const updates: string[] = [];
+    const params: Array<string | number | null> = [];
+    const pushUpdate = (sql: string, value: string | number | null | undefined) => {
+      if (value === undefined) {return;}
+      updates.push(sql);
+      params.push(value);
+    };
+
+    pushUpdate('name = ?', name);
+    pushUpdate('slug = ?', body.slug === undefined ? undefined : nullableString(body.slug));
+    pushUpdate('parent_id = ?', parentId);
+    pushUpdate('description = ?', body.description === undefined ? undefined : nullableString(body.description));
+    pushUpdate('status = ?', body.status === undefined ? undefined : categoryStatus(body.status));
+
+    if (updates.length === 0) {
+      return;
+    }
+    params.push(id);
+
     const result = await this.db.execute(
-      `
-        UPDATE categories
-        SET name = COALESCE(?, name),
-            slug = COALESCE(?, slug),
-            parent_id = COALESCE(?, parent_id),
-            description = COALESCE(?, description),
-            status = COALESCE(?, status)
-        WHERE id = ?
-      `,
-      [
-        name ?? null,
-        body.slug === undefined ? null : nullableString(body.slug),
-        optionalNumber(body.parent_id) ?? null,
-        body.description === undefined ? null : nullableString(body.description),
-        body.status === undefined ? null : nullableString(body.status),
-        id,
-      ],
+      `UPDATE categories SET ${updates.join(', ')} WHERE id = ?`,
+      params,
     );
 
     if (result.affectedRows === 0) {

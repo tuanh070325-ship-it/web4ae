@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiError, apiGet, apiPost, clearAuthToken, getAuthToken, setAuthToken } from "../../lib/api";
-import type { ApiResponse, AuthSession, User } from "../../lib/types";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ApiError, apiGet, apiPost, clearAuthToken, getAuthToken, setAuthToken } from '../../lib/api';
+import type { ApiResponse, AuthSession, User } from '../../lib/types';
 
 interface AuthContextValue {
   user: User | null;
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await apiGet<ApiResponse<User>>("/auth/me", { suppressUnauthorizedEvent: true });
+      const response = await apiGet<ApiResponse<User>>('/auth/me', { suppressUnauthorizedEvent: true });
       setUser(response.data);
       setToken(getAuthToken());
     } catch (err) {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setToken(null);
       if (!(err instanceof ApiError && err.status === 401)) {
-        console.error("Unable to refresh auth session:", err);
+        console.error('Unable to refresh auth session:', err);
       }
     } finally {
       setLoading(false);
@@ -57,29 +57,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setToken(null);
     };
-    window.addEventListener("akibacore:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("akibacore:unauthorized", handleUnauthorized);
+    window.addEventListener('akibacore:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('akibacore:unauthorized', handleUnauthorized);
   }, [refreshMe]);
 
   const login = useCallback(async (input: { email: string; password: string }) => {
-    const response = await apiPost<ApiResponse<AuthSession>>("/auth/login", input);
+    const response = await apiPost<ApiResponse<AuthSession>>('/auth/login', input);
     applySession(response.data);
     return response.data.user;
   }, [applySession]);
 
   const register = useCallback(async (input: { username: string; email: string; password: string; full_name?: string }) => {
-    const response = await apiPost<ApiResponse<AuthSession>>("/auth/register", input);
+    const response = await apiPost<ApiResponse<AuthSession>>('/auth/register', input);
     applySession(response.data);
   }, [applySession]);
 
   const logout = useCallback(async () => {
     try {
       if (getAuthToken()) {
-        await apiPost("/auth/logout", undefined, { suppressUnauthorizedEvent: true });
+        await apiPost('/auth/logout', undefined, { suppressUnauthorizedEvent: true });
       }
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 401)) {
-        console.error("Unable to complete logout request:", err);
+        console.error('Unable to complete logout request:', err);
       }
     } finally {
       clearAuthToken();
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     loading,
     isAuthenticated: Boolean(user && token),
-    isAdmin: ["ADMIN", "MANAGER"].includes(user?.role?.toUpperCase() ?? ""),
+    isAdmin: user?.role?.toUpperCase() === 'ADMIN',
     login,
     register,
     logout,
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error('useAuth must be used inside AuthProvider');
   }
   return context;
 }

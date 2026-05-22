@@ -1,322 +1,369 @@
-# Shop Anime - Backend API Documentation
+# AkibaCore Backend API
 
-Base URL: `http://localhost:4000/api`
+Base URL:
 
-Tất cả các API Output đều wrap trong property `data` hoặc `success` dựa trên tính chuẩn hóa JSON.
+```text
+http://localhost:4000/api
+```
 
----
+Most endpoints return JSON wrapped in `data`. Admin endpoints require `Authorization: Bearer <token>`. In local development only, protected endpoints also accept `x-user-id` for quick testing.
 
-## 1. Auth & Users (Người dùng)
+## Auth
 
-### **📌 Role-Based Access Control (RBAC)**
-Hệ thống back-end đã tích hợp phân quyền **Admin** và **Customer**.
-Để gửi request giả định là User đăng nhập, **phải truyền Auth Header**: `x-user-id` (hoặc `Authorization: Bearer <user_id>`).
-- Cấp quyền **ADMIN**: thêm header `x-user-id: 1`
-- Cấp quyền **CUSTOMER** thông thường: thêm header `x-user-id: 2` (hoặc số ID khác).
+Login with seeded admin:
 
-### 1.1 Lấy danh sách users (Dành cho Admin)
-- **Endpoint:** `GET /api/users`
-- **Mô tả:** Lấy danh sách người dùng. Bắt buộc quyền Admin.
-- **Header:** Cần thêm header (ví dụ: `-H "x-user-id: 1"`)
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/users -H "x-user-id: 1"
-  ```
-- **Output:**
-  ```json
-  {
-    "data": [
-      {
-        "id": 1,
-        "username": "kaitotanaka",
-        "email": "kaito@example.com",
-        "full_name": "Kaito Tanaka",
-        "avatar_url": "https://i.pravatar.cc/150?u=kaito",
-        "phone": null,
-        "status": "ACTIVE",
-        "created_at": "2026-05-10 12:21:30"
-      }
-    ]
-  }
-  ```
-
-### 1.2 Lấy chi tiết user
-- **Endpoint:** `GET /api/users/:id`
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/users/1
-  ```
-
-### 1.3 Lấy danh sách địa chỉ của User
-- **Endpoint:** `GET /api/users/:id/addresses`
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/users/1/addresses
-  ```
-
-### 1.4 Thêm địa chỉ mới
-- **Endpoint:** `POST /api/users/:id/addresses`
-- **Body:**
-  ```json
-  {
-    "receiver_name": "Nguyen Van A",
-    "receiver_phone": "0987654321",
-    "address_line": "123 Đường B",
-    "ward": "Phường 1",
-    "district": "Quận 1",
-    "city": "TP HCM",
-    "is_default": true
-  }
-  ```
-- **cURL:**
-  ```bash
-  curl -X POST http://localhost:4000/api/users/1/addresses \
+```bash
+curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"receiver_name":"A","receiver_phone":"0987654321","address_line":"123","ward":"1","district":"1","city":"HCM","is_default":true}'
-  ```
+  -d '{"email":"kaito@example.com","password":"password123"}'
+```
 
-### 1.5 Cập nhật thông tin User
-- **Endpoint:** `PUT /api/users/:id`
-- **Body:** `{"full_name": "New Name", "phone": "0123"}`
+Get current user:
 
-### 1.6 Xóa User (Dành cho Admin)
-- **Endpoint:** `DELETE /api/users/:id`
-- **Header:** Bắt buộc phải là quyền Admin (ví dụ: `x-user-id: 1`)
+```bash
+curl http://localhost:4000/api/auth/me \
+  -H "Authorization: Bearer <TOKEN>"
+```
 
-### 1.7 Cập nhật thông tin địa chỉ
-- **Endpoint:** `PUT /api/users/:id/addresses/:addressId`
-- **Body:** Có các thông tin như khi tạo
+Register customer:
 
-### 1.8 Xóa địa chỉ
-- **Endpoint:** `DELETE /api/users/:id/addresses/:addressId`
-
----
-
-## 2. Catalog (Sách Truyện & Sản phẩm)
-
-### 2.1 Lấy danh sách sản phẩm
-- **Endpoint:** `GET /api/products`
-- **Query Params:** `page`, `limit`, `search`, `category`, `genres`, `minPrice`, `maxPrice`, `minRating`, `seriesStatus`, `sort`
-- **Filter Notes:**
-  - `page`: trang hien tai, mac dinh `1`.
-  - `limit`: so san pham moi trang, mac dinh `20`, toi da `60`.
-  - `search`: tim trong ten san pham, slug, mo ta, tac gia, danh muc, series.
-  - `category`: category id hoac slug.
-  - `genres`: danh sach category slug, cach nhau bang dau phay. Vi du: `shounen,action`.
-  - `minPrice`, `maxPrice`: loc theo gia ban thuc te sau giam (`price`). `original_price` chi dung de hien thi gia goc. Neu truyen ca hai gia tri thi `maxPrice` phai lon hon `minPrice`.
-  - `minRating`: gia tri tu `1` den `5`, loc theo `average_rating >= minRating`.
-  - `seriesStatus`: `ONGOING`, `COMPLETED`, hoac `HIATUS`.
-  - `sort`: `popularity`, `newest`, `price_asc`, `price_desc`, hoac `rating`.
-- **cURL:**
-  ```bash
-  curl "http://localhost:4000/api/products?page=1&limit=15&search=berserk&genres=seinen,action&minPrice=5&maxPrice=50&minRating=4&seriesStatus=ONGOING&sort=price_asc"
-  ```
-- **Invalid Price Range Response:**
-  ```json
-  {
-    "message": "maxPrice must be greater than minPrice",
-    "error": "Bad Request",
-    "statusCode": 400
-  }
-  ```
-- **Output:** response gom `data` va `meta` phan trang.
-  ```json
-  {
-    "data": [
-      {
-        "id": 1,
-        "name": "Berserk",
-        "slug": "berserk",
-        "original_price": "19.99",
-        "discount_percent": "30.00",
-        "price": "13.99",
-        "discount_price": "13.99",
-        "discount_amount": "6.00",
-        "has_discount": 1,
-        "shipping_fee": "5.99",
-        "shipping_discount_percent": "100.00",
-        "shipping_final_fee": "0.00",
-        "average_rating": "5.0000",
-        "review_count": 1,
-        "external_rating": "9.47",
-        "external_rating_count": 700000,
-        "external_rating_source": "MyAnimeList"
-      }
-    ],
-    "meta": {
-      "page": 1,
-      "limit": 15,
-      "total": 35,
-      "totalPages": 3,
-      "hasNextPage": true,
-      "hasPrevPage": false
-    }
-  }
-  ```
-
-### 2.2 Lấy chi tiết sản phẩm
-- **Endpoint:** `GET /api/products/:slug`
-- **Mota:** Frontend public detail dung slug san pham, khong dung id trong URL. Backend van tam thoi fallback numeric id de tuong thich du lieu/link cu.
-- **cURL:**
-  ```bash
-  curl "http://localhost:4000/api/products/chainsaw-man"
-  ```
-
-### 2.3 Thêm sản phẩm (Admin)
-- **Endpoint:** `POST /api/products`
-- **Header:** Bắt buộc quyền Admin
-- **Body Params:** `name`, `slug`, `author_id`, `category_id`, `original_price`, `discount_percent`, `shipping_fee`, `shipping_discount_percent`, `image_url`, `description`, `stock_quantity`, `status`
-- **Pricing Rule:** Admin nhap `original_price` va `discount_percent`; backend tu tinh `price = original_price * (1 - discount_percent / 100)`. `discount_percent` hop le tu `0` den `95`. `discount_price` chi giu de tuong thich response cu, client khong can nhap thu cong.
-- **Shipping Rule:** Admin nhap `shipping_fee` va `shipping_discount_percent`; backend tu tinh `shipping_final_fee = shipping_fee * (1 - shipping_discount_percent / 100)`. `shipping_discount_percent` hop le tu `0` den `100`; `100` nghia la freeship. Client khong can gui `shipping_final_fee`.
-- **Example Body:**
-  ```json
-  {
-    "name": "Berserk Deluxe Volume 1",
-    "slug": "berserk-deluxe-volume-1",
-    "author_id": 1,
-    "category_id": 2,
-    "original_price": 49.99,
-    "discount_percent": 24,
-    "shipping_fee": 5.99,
-    "shipping_discount_percent": 100,
-    "stock_quantity": 21,
-    "image_url": "https://example.com/berserk.jpg",
-    "description": "Dark fantasy manga volume.",
-    "status": "ACTIVE"
-  }
-  ```
-
-### 2.4 Sửa thông tin sản phẩm (Admin)
-- **Endpoint:** `PUT /api/products/:id`
-- **Pricing Update:** Gui `original_price` hoac `discount_percent` se lam backend tinh lai `price` va `discount_price`. Neu khong gui hai truong nay thi gia duoc giu nguyen.
-- **Shipping Update:** Gui `shipping_fee` hoac `shipping_discount_percent` se lam backend tinh lai `shipping_final_fee`. Neu `shipping_final_fee = 0`, frontend nen hien thi `Freeship`.
-- **Header:** Bắt buộc quyền Admin
-
-### 2.5 Xóa sản phẩm (Admin)
-- **Endpoint:** `DELETE /api/products/:id`
-- **Header:** Bắt buộc quyền Admin
-
-### 2.6 Lấy danh sách danh mục (Categories)
-- **Endpoint:** `GET /api/categories`
-
-### 2.7 Thêm danh mục (Admin)
-- **Endpoint:** `POST /api/categories`
-- **Header:** Bắt buộc quyền Admin
-- **Body:** `{"name": "Action", "slug": "action"}`
-
-### 2.8 Sửa danh mục (Admin)
-- **Endpoint:** `PUT /api/categories/:id`
-
-### 2.9 Xóa danh mục (Admin)
-- **Endpoint:** `DELETE /api/categories/:id`
-
-### 2.10 Lấy danh sách tác giả
-- **Endpoint:** `GET /api/authors`
-
-### 2.11 Thêm tác giả (Admin)
-- **Endpoint:** `POST /api/authors`
-
-### 2.12 Sửa tác giả (Admin)
-- **Endpoint:** `PUT /api/authors/:id`
-
-### 2.13 Xóa tác giả (Admin)
-- **Endpoint:** `DELETE /api/authors/:id`
-
----
-
-## 3. Cart & Orders (Giỏ hàng & Mua sắm)
-
-### 3.1 Xem giỏ hàng của user
-- **Endpoint:** `GET /api/cart/:user_id`
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/cart/1
-  ```
-
-### 3.2 Thêm sản phẩm vào giỏ (hoặc cập nhật số lượng)
-- **Endpoint:** `POST /api/cart`
-- **Body:** `{"user_id": 1, "product_id": 2, "quantity": 1}`
-- **cURL:**
-  ```bash
-  curl -X POST http://localhost:4000/api/cart \
+```bash
+curl -X POST http://localhost:4000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"user_id": 1, "product_id": 2, "quantity": 1}'
-  ```
+  -d '{"username":"newfan","email":"newfan@example.com","password":"password123","full_name":"New Fan"}'
+```
 
-### 3.3 Cập nhật số lượng item
-- **Endpoint:** `PUT /api/cart/:user_id/:product_id`
-- **Body:** `{"quantity": 3}`
+## Products
 
-### 3.4 Đặt hàng (Checkout)
-- **Endpoint:** `POST /api/orders/checkout`
-- **Body:**
-  ```json
-  {
-    "user_id": 1,
-    "receiver_name": "A",
-    "receiver_phone": "0987654321",
-    "shipping_address_line": "123 ABC",
-    "shipping_city": "HCM",
-    "shipping_method": "STANDARD"
-  }
-  ```
-- **Buy Now Body:** Neu chi mua ngay mot san pham, gui them `items`. Backend se tao order tu `items` va khong xoa cart hien co.
-  ```json
-  {
-    "receiver_name": "A",
-    "receiver_phone": "0987654321",
-    "shipping_address_line": "123 ABC",
-    "shipping_city": "HCM",
-    "shipping_method": "STANDARD",
-    "items": [{ "product_id": 1, "quantity": 1 }]
-  }
-  ```
-- **cURL:**
-  ```bash
-  curl -X POST http://localhost:4000/api/orders/checkout \
+List products:
+
+```bash
+curl "http://localhost:4000/api/products?page=1&limit=12&search=chainsaw&sort=newest"
+```
+
+Filter products:
+
+```bash
+curl "http://localhost:4000/api/products?genres=shounen,action&minPrice=5&maxPrice=50&minRating=4&seriesStatus=ONGOING&sort=price_asc"
+```
+
+Get product detail by slug:
+
+```bash
+curl "http://localhost:4000/api/products/chainsaw-man-vol-1"
+```
+
+Create product as admin:
+
+```bash
+curl -X POST http://localhost:4000/api/products \
   -H "Content-Type: application/json" \
-  -d '{"user_id":1,"receiver_name":"A","receiver_phone":"098","shipping_address_line":"x","shipping_city":"y"}'
-  ```
-- **Tính năng Backend Checkout:** Backend sẽ map với Carts của user hoặc `items` của Buy Now, kiểm tra và trừ tồn kho (stock_quantity), lưu Transaction Inventory, tính Total tự động. Phí ship đơn hàng lấy từ tổng `shipping_final_fee` của từng dòng sản phẩm; checkout từ cart sẽ xóa Giỏ Hàng, Buy Now giữ nguyên cart hiện có.
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{
+    "name":"Berserk Deluxe Volume 1",
+    "slug":"berserk-deluxe-volume-1",
+    "author_id":1,
+    "category_id":2,
+    "publisher_id":1,
+    "series_id":1,
+    "original_price":49.99,
+    "discount_percent":24,
+    "shipping_fee":5.99,
+    "shipping_discount_percent":100,
+    "stock_quantity":21,
+    "image_url":"https://example.com/berserk.jpg",
+    "description":"Premium dark fantasy manga volume.",
+    "status":"ACTIVE"
+  }'
+```
 
-### 3.5 Lấy lịch sử đơn hàng của User
-- **Endpoint:** `GET /api/orders/user/:userId`
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/orders/user/1
-  ```
+Update product:
 
----
+```bash
+curl -X PUT http://localhost:4000/api/products/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"stock_quantity":40,"discount_percent":10,"status":"ACTIVE"}'
+```
 
-## 4. Community (Mạng xã hội thu nhỏ)
+Delete product:
 
-### 4.1 Lấy danh sách Feed/Post
-- **Endpoint:** `GET /api/posts`
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/posts
-  ```
+```bash
+curl -X DELETE http://localhost:4000/api/products/1 \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
 
-### 4.2 Thêm bài viết mới
-- **Endpoint:** `POST /api/posts`
-- **Body:** `{"user_id": 1, "content": "Hello World"}`
+Product write validation:
 
-### 4.3 Like bài viết
-- **Endpoint:** `POST /api/posts/:id/like`
-- **cURL:**
-  ```bash
-  curl -X POST http://localhost:4000/api/posts/1/like
-  ```
+- `author_id`, `category_id`, `publisher_id`, and `series_id` must exist when provided.
+- `original_price` must be greater than `0`.
+- `discount_percent` must be between `0` and `95`.
+- `shipping_discount_percent` must be between `0` and `100`.
+- `status` must be `ACTIVE`, `INACTIVE`, `DRAFT`, or `OUT_OF_STOCK`.
 
-### 4.4 Lấy đánh giá (Reviews) của Sản phẩm
-- **Endpoint:** `GET /api/reviews/:productId`
-- **Ghi chu:** Diem sao hien thi tren san pham duoc dong bo tu bang `reviews` qua `average_rating` va `review_count`. Khi review moi duoc tao, backend cap nhat lai hai truong nay tren `products`.
-- **cURL:**
-  ```bash
-  curl -X GET http://localhost:4000/api/reviews/1
-  ```
+## Categories And Authors
 
-### 4.5 Viết đánh giá sản phẩm
-- **Endpoint:** `POST /api/reviews`
-- **Body:** `{"user_id": 1, "product_id": 1, "order_id": 10234, "rating": 5, "comment": "Great!"}`
-- **Validation:** `rating` phai la so nguyen tu `1` den `5`.
+List categories:
+
+```bash
+curl http://localhost:4000/api/categories
+```
+
+Create category:
+
+```bash
+curl -X POST http://localhost:4000/api/categories \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"name":"Romance","slug":"romance","parent_id":null,"description":"Romance manga"}'
+```
+
+Update category:
+
+```bash
+curl -X PUT http://localhost:4000/api/categories/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"description":"Updated category copy","status":"ACTIVE"}'
+```
+
+List authors:
+
+```bash
+curl http://localhost:4000/api/authors
+```
+
+Create author:
+
+```bash
+curl -X POST http://localhost:4000/api/authors \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"name":"Kentaro Miura","slug":"kentaro-miura","country":"Japan","bio":"Creator of Berserk."}'
+```
+
+## Users And Addresses
+
+List users as admin:
+
+```bash
+curl http://localhost:4000/api/users \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Create user as admin:
+
+```bash
+curl -X POST http://localhost:4000/api/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"username":"customer01","email":"customer01@example.com","password":"password123","full_name":"Customer 01","role":"CUSTOMER","status":"ACTIVE"}'
+```
+
+Get user addresses:
+
+```bash
+curl http://localhost:4000/api/users/1/addresses \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Create address:
+
+```bash
+curl -X POST http://localhost:4000/api/users/1/addresses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"receiver_name":"Kaito Tanaka","receiver_phone":"09012345678","address_line":"123 Shibuya","ward":"Shibuya","district":"Shibuya-ku","city":"Tokyo","country":"Japan","is_default":true}'
+```
+
+User write validation:
+
+- `role` must be `ADMIN` or `CUSTOMER`.
+- `status` must be `ACTIVE`, `INACTIVE`, or `LOCKED`.
+- `password`, when creating a user, is hashed by backend and stored as `base64:<Base64 of "scrypt:<salt>:<derived-key>">`.
+- Never send an already-hashed password from the frontend. Send the plain password over HTTPS and let the backend hash it.
+
+## Cart And Wishlist
+
+Get cart:
+
+```bash
+curl http://localhost:4000/api/cart/1 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Add to cart:
+
+```bash
+curl -X POST http://localhost:4000/api/cart \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"user_id":1,"product_id":2,"quantity":1}'
+```
+
+Update cart item:
+
+```bash
+curl -X PUT http://localhost:4000/api/cart/1/2 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"quantity":3}'
+```
+
+Get wishlist:
+
+```bash
+curl http://localhost:4000/api/wishlist \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Add wishlist item:
+
+```bash
+curl -X POST http://localhost:4000/api/wishlist \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"product_id":3}'
+```
+
+Remove wishlist item:
+
+```bash
+curl -X DELETE http://localhost:4000/api/wishlist/3 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+## Orders
+
+Checkout from cart:
+
+```bash
+curl -X POST http://localhost:4000/api/orders/checkout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"user_id":1,"receiver_name":"Kaito Tanaka","receiver_phone":"09012345678","shipping_address_line":"123 Shibuya","shipping_city":"Tokyo","shipping_method":"STANDARD"}'
+```
+
+Buy now checkout:
+
+```bash
+curl -X POST http://localhost:4000/api/orders/checkout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"user_id":1,"receiver_name":"Kaito Tanaka","receiver_phone":"09012345678","shipping_address_line":"123 Shibuya","shipping_city":"Tokyo","items":[{"product_id":1,"quantity":1}]}'
+```
+
+List all orders as admin:
+
+```bash
+curl http://localhost:4000/api/orders \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Update order status:
+
+```bash
+curl -X PUT http://localhost:4000/api/orders/10234/status \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"status":"SHIPPED"}'
+```
+
+Allowed order statuses: `PENDING`, `PROCESSING`, `SHIPPED`, `COMPLETED`, `CANCELLED`.
+
+## Community
+
+List posts:
+
+```bash
+curl http://localhost:4000/api/posts
+```
+
+Create post:
+
+```bash
+curl -X POST http://localhost:4000/api/posts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"user_id":1,"content":"New manga haul arrived."}'
+```
+
+Like post:
+
+```bash
+curl -X POST http://localhost:4000/api/posts/1/like \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+Get reviews:
+
+```bash
+curl http://localhost:4000/api/reviews/1
+```
+
+Create review:
+
+```bash
+curl -X POST http://localhost:4000/api/reviews \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"user_id":2,"product_id":1,"order_id":10233,"rating":5,"comment":"Excellent print quality."}'
+```
+
+Review validation:
+
+- `user_id` must exist.
+- `product_id` must exist.
+- `order_id`, when provided, must belong to that user.
+- `rating` must be an integer from `1` to `5`.
+
+## Chatbot
+
+Proxy customer chat to n8n:
+
+```bash
+curl -X POST http://localhost:4000/api/chatbot/message \
+  -H "Content-Type: application/json" \
+  -d '{"message":"chào em","sessionId":"demo-session","pageUrl":"/"}'
+```
+
+Expected successful response:
+
+```json
+{
+  "data": {
+    "reply": "Xin chào, AkibaCore có thể hỗ trợ bạn hôm nay như thế nào?"
+  }
+}
+```
+
+## Admin Product AI
+
+Generate product description:
+
+```bash
+curl -X POST http://localhost:4000/api/admin/product-ai/description/generate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"instruction":"Tạo mô tả cho manga phiêu lưu về công chúa được giải cứu","product":{"name":"Akiba Adventure","category":"Adventure","author":"AkibaCore","price":12.5}}'
+```
+
+Revise product description:
+
+```bash
+curl -X POST http://localhost:4000/api/admin/product-ai/description/revise \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -d '{"description":"Bản mô tả hiện tại cần chỉnh sửa.","instruction":"Làm cảm xúc hơn nhưng vẫn chuẩn SEO","product":{"name":"Akiba Adventure","category":"Adventure","author":"AkibaCore","price":12.5}}'
+```
+
+The product AI response shape is:
+
+```json
+{
+  "data": {
+    "description": "Generated description text",
+    "source": "gemini"
+  }
+}
+```

@@ -1,46 +1,47 @@
-import { FormEvent, useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
-import { User, ShoppingBag, Heart, Settings } from "lucide-react";
-import { apiPut } from "../lib/api";
-import { useAuth } from "../components/auth/AuthProvider";
+import type { FormEvent} from 'react';
+import { useEffect, useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import { User, ShoppingBag, Heart, Settings } from 'lucide-react';
+import { apiPut } from '../lib/api';
+import { useAuth } from '../components/auth/AuthProvider';
 
 export function Profile() {
   const { user, refreshMe } = useAuth();
   const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    username: "",
-    phone: "",
+    full_name: '',
+    email: '',
+    username: '',
+    phone: '',
   });
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       setForm({
-        full_name: user.full_name || "",
+        full_name: user.full_name || '',
         email: user.email,
         username: user.username,
-        phone: user.phone || "",
+        phone: user.phone || '',
       });
     }
   }, [user]);
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user) return;
+    if (!user) {return;}
     await apiPut(`/users/${user.id}`, {
       full_name: form.full_name,
       phone: form.phone,
     });
     await refreshMe();
-    setMessage("Profile updated");
+    setMessage('Profile updated');
   };
 
   const sidebarLinkClass = ({ isActive }: { isActive: boolean }) =>
     `w-full flex items-center gap-3 px-5 py-3 rounded-full font-medium transition-colors ${
       isActive
-        ? "bg-[#b0222e] text-white"
-        : "text-[#a0a5b1] hover:text-white hover:bg-[#24262f]"
+        ? 'bg-[#b0222e] text-white'
+        : 'text-[#a0a5b1] hover:text-white hover:bg-[#24262f]'
     }`;
 
   return (
@@ -69,7 +70,7 @@ export function Profile() {
               />
             </div>
             <div className="pb-4">
-              <h1 className="text-3xl font-bold text-white">{user?.full_name || user?.username || "AkibaCore"}</h1>
+              <h1 className="text-3xl font-bold text-white">{user?.full_name || user?.username || 'AkibaCore'}</h1>
               <p className="text-[#a0a5b1]">{user?.email}</p>
             </div>
           </div>
@@ -146,7 +147,7 @@ export function Profile() {
               <div className="bg-[#1e2128] rounded-xl p-6 border border-[#2e333d]">
                 <h2 className="text-xl font-bold text-white mb-6">Favorite Genres</h2>
                 <div className="flex flex-wrap gap-3">
-                  {["Cyberpunk", "Mecha", "Dark Fantasy", "Shonen", "Seinen"].map(genre => (
+                  {['Cyberpunk', 'Mecha', 'Dark Fantasy', 'Shonen', 'Seinen'].map(genre => (
                     <span key={genre} className="px-4 py-1.5 bg-[#401a20] text-[#ff8080] border border-[#802020] rounded-full text-sm font-medium">
                       {genre}
                     </span>

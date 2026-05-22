@@ -1,11 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { CreditCard } from "lucide-react";
-import { apiGet, apiPost } from "../lib/api";
-import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from "../lib/format";
-import type { ApiMutationResponse, ApiResponse, CartItem, Product } from "../lib/types";
+import type { FormEvent} from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CreditCard } from 'lucide-react';
+import { apiGet, apiPost } from '../lib/api';
+import type { ApiMutationResponse, ApiResponse, CartItem, Product } from '../lib/types';
+import { OrderSummary } from '../components/checkout/OrderSummary';
 
-const BUY_NOW_CHECKOUT_KEY = "akibacore.buyNowCheckout";
+const BUY_NOW_CHECKOUT_KEY = 'akibacore.buyNowCheckout';
 
 interface BuyNowCheckoutItem extends Product {
   cart_item_id: number;
@@ -18,24 +19,24 @@ export function Checkout() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [buyNowItem, setBuyNowItem] = useState<BuyNowCheckoutItem | null>(null);
   const [form, setForm] = useState({
-    receiver_name: "",
-    receiver_phone: "",
-    shipping_address_line: "",
-    shipping_ward: "",
-    shipping_district: "",
-    shipping_city: "",
-    notes: "",
+    receiver_name: '',
+    receiver_phone: '',
+    shipping_address_line: '',
+    shipping_ward: '',
+    shipping_district: '',
+    shipping_city: '',
+    notes: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const isBuyNowCheckout = new URLSearchParams(location.search).get("buyNow") === "1";
+  const isBuyNowCheckout = new URLSearchParams(location.search).get('buyNow') === '1';
   const checkoutItems = buyNowItem ? [buyNowItem] : items;
 
   useEffect(() => {
     if (isBuyNowCheckout) {
       const storedBuyNow = sessionStorage.getItem(BUY_NOW_CHECKOUT_KEY);
       if (!storedBuyNow) {
-        setError("Buy now item is no longer available. Please choose the product again.");
+        setError('Buy now item is no longer available. Please choose the product again.');
         setBuyNowItem(null);
         return;
       }
@@ -43,7 +44,7 @@ export function Checkout() {
       try {
         const parsed = JSON.parse(storedBuyNow) as { product?: Product; quantity?: number };
         if (!parsed.product?.id) {
-          throw new Error("Invalid buy now item");
+          throw new Error('Invalid buy now item');
         }
         setBuyNowItem({
           ...parsed.product,
@@ -52,62 +53,40 @@ export function Checkout() {
         });
       } catch {
         sessionStorage.removeItem(BUY_NOW_CHECKOUT_KEY);
-        setError("Buy now item is invalid. Please choose the product again.");
+        setError('Buy now item is invalid. Please choose the product again.');
         setBuyNowItem(null);
       }
       return;
     }
 
     setBuyNowItem(null);
-    apiGet<ApiResponse<CartItem[]>>("/cart")
+    apiGet<ApiResponse<CartItem[]>>('/cart')
       .then((response) => setItems(response.data))
-      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load cart"));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load cart'));
   }, [isBuyNowCheckout]);
 
-  const subtotal = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + getProductFinalPrice(item) * item.quantity, 0),
-    [checkoutItems],
-  );
-  const productSavings = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + getProductDiscountAmount(item) * item.quantity, 0),
-    [checkoutItems],
-  );
-  const originalShipping = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + getProductShippingFee(item), 0),
-    [checkoutItems],
-  );
-  const shipping = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + getProductFinalShippingFee(item), 0),
-    [checkoutItems],
-  );
-  const shippingSavings = useMemo(
-    () => checkoutItems.reduce((sum, item) => sum + getProductShippingDiscountAmount(item), 0),
-    [checkoutItems],
-  );
-  const total = subtotal + shipping;
-
-  const updateField = (name: keyof typeof form, value: string) => {
+  const updateField = useCallback((name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }));
-  };
+  }, []);
 
   const placeOrder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const response = await apiPost<ApiMutationResponse<{ orderId: number }>>("/orders/checkout", {
+      const response = await apiPost<ApiMutationResponse<{ orderId: number }>>('/orders/checkout', {
         ...form,
-        shipping_method: "STANDARD",
+        shipping_method: 'STANDARD',
         items: buyNowItem ? [{ product_id: buyNowItem.id, quantity: buyNowItem.quantity }] : undefined,
       });
       if (buyNowItem) {
         sessionStorage.removeItem(BUY_NOW_CHECKOUT_KEY);
       } else {
-        window.dispatchEvent(new Event("akibacore:cart-updated"));
+        window.dispatchEvent(new Event('akibacore:cart-updated'));
       }
-      navigate("/orders", { replace: true, state: { orderId: response.data?.orderId } });
+      navigate('/orders', { replace: true, state: { orderId: response.data?.orderId } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to place order");
+      setError(err instanceof Error ? err.message : 'Unable to place order');
     } finally {
       setSubmitting(false);
     }
@@ -135,15 +114,15 @@ export function Checkout() {
               <h2 className="text-2xl font-medium text-white mb-6">Shipping Information</h2>
               <div className="bg-[#1a1b22] p-8 rounded-xl border border-[#2e333d]">
                 <div className="space-y-4">
-                  <input required value={form.receiver_name} onChange={(event) => updateField("receiver_name", event.target.value)} type="text" placeholder="Full Name" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
-                  <input required value={form.receiver_phone} onChange={(event) => updateField("receiver_phone", event.target.value)} type="tel" placeholder="Phone Number" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
-                  <input required value={form.shipping_address_line} onChange={(event) => updateField("shipping_address_line", event.target.value)} type="text" placeholder="Address Line" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                  <input required value={form.receiver_name} onChange={(event) => updateField('receiver_name', event.target.value)} type="text" placeholder="Full Name" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                  <input required value={form.receiver_phone} onChange={(event) => updateField('receiver_phone', event.target.value)} type="tel" placeholder="Phone Number" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                  <input required value={form.shipping_address_line} onChange={(event) => updateField('shipping_address_line', event.target.value)} type="text" placeholder="Address Line" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input value={form.shipping_ward} onChange={(event) => updateField("shipping_ward", event.target.value)} type="text" placeholder="Ward" className="w-full bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
-                    <input value={form.shipping_district} onChange={(event) => updateField("shipping_district", event.target.value)} type="text" placeholder="District" className="w-full bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
-                    <input required value={form.shipping_city} onChange={(event) => updateField("shipping_city", event.target.value)} type="text" placeholder="City" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                    <input value={form.shipping_ward} onChange={(event) => updateField('shipping_ward', event.target.value)} type="text" placeholder="Ward" className="w-full bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                    <input value={form.shipping_district} onChange={(event) => updateField('shipping_district', event.target.value)} type="text" placeholder="District" className="w-full bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                    <input required value={form.shipping_city} onChange={(event) => updateField('shipping_city', event.target.value)} type="text" placeholder="City" className="w-full bg-[#24262f] border border-red-500/60 rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
                   </div>
-                  <textarea value={form.notes} onChange={(event) => updateField("notes", event.target.value)} placeholder="Delivery notes" className="w-full min-h-24 bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
+                  <textarea value={form.notes} onChange={(event) => updateField('notes', event.target.value)} placeholder="Delivery notes" className="w-full min-h-24 bg-[#24262f] border border-[#2e333d] rounded-md px-4 py-3 text-white focus:outline-none placeholder-[#5e6677] transition-all" />
                 </div>
               </div>
             </div>
@@ -164,60 +143,7 @@ export function Checkout() {
             </div>
           </div>
 
-          <div className="w-full lg:w-[400px]">
-            <div className="bg-[#1a1b22] px-6 py-8 rounded-2xl border border-[#2e333d]">
-              <h2 className="text-[20px] text-white font-medium mb-6">Order Review</h2>
-              <div className="space-y-4 mb-8">
-                {checkoutItems.map((item) => (
-                  <div key={item.cart_item_id} className="flex items-center gap-4">
-                    <div className="w-14 h-16 bg-white rounded overflow-hidden flex items-center justify-center">
-                      <img src={getProductImage(item)} alt={item.name} className="object-contain w-full h-full p-1" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm text-white line-clamp-1">{item.name}</span>
-                      <div className="mt-1 text-xs text-zinc-500">
-                        {formatUsd(getProductFinalPrice(item))}
-                        {hasProductDiscount(item) && (
-                          <span className="ml-2 text-zinc-600 line-through">{formatUsd(getProductOriginalPrice(item))}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm text-white">x{item.quantity}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2 text-[14px] text-white border-t border-[#3a3f4e] pt-6 mb-6">
-                <div className="flex justify-between"><span className="text-[#a0a5b1]">Subtotal:</span><span>{formatUsd(subtotal)}</span></div>
-                {productSavings > 0 && (
-                  <div className="flex justify-between text-[#ff8aa0]"><span>Manga drop saved:</span><span>-{formatUsd(productSavings)}</span></div>
-                )}
-                {shippingSavings > 0 && (
-                  <div className="flex justify-between text-[#9bdcff]">
-                    <span>Shipping saved:</span>
-                    <span>-{formatUsd(shippingSavings)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-[#a0a5b1]">Shipping:</span>
-                  <span>
-                    {shippingSavings > 0 && originalShipping > shipping && (
-                      <span className="mr-2 text-zinc-600 line-through">{formatUsd(originalShipping)}</span>
-                    )}
-                    <span className={shipping <= 0 && checkoutItems.length > 0 ? "font-black uppercase text-[#9bdcff]" : ""}>
-                      {checkoutItems.length ? formatShippingFee(shipping) : formatUsd(0)}
-                    </span>
-                  </span>
-                </div>
-                <div className="flex justify-between font-bold text-base mt-2 pt-2"><span>Total:</span><span>{formatUsd(total)}</span></div>
-              </div>
-
-              {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-              <button disabled={submitting || checkoutItems.length === 0} className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium py-3 rounded-lg transition-colors text-[15px]">
-                {submitting ? "Placing Order..." : "Place Order"}
-              </button>
-            </div>
-          </div>
+          <OrderSummary items={checkoutItems} error={error} submitting={submitting} />
         </div>
       </div>
     </form>

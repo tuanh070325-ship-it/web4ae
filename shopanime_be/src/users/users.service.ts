@@ -3,15 +3,31 @@ import { DbService } from '../db/db.service.js';
 import { hashPassword } from '../auth/password.js';
 
 function nullableString(value: unknown) {
-  if (value === null || value === undefined) return null;
-  if (typeof value !== 'string') return null;
+  if (value === null || value === undefined) {return null;}
+  if (typeof value !== 'string') {return null;}
   const trimmed = value.trim();
   return trimmed || null;
 }
 
 function optionalString(value: unknown) {
-  if (value === undefined) return undefined;
+  if (value === undefined) {return undefined;}
   return nullableString(value);
+}
+
+function userStatus(value: unknown) {
+  const status = nullableString(value)?.toUpperCase() || 'ACTIVE';
+  if (!['ACTIVE', 'INACTIVE', 'LOCKED'].includes(status)) {
+    throw new BadRequestException('Invalid user status');
+  }
+  return status;
+}
+
+function userRole(value: unknown) {
+  const role = nullableString(value)?.toUpperCase() || 'CUSTOMER';
+  if (!['ADMIN', 'CUSTOMER'].includes(role)) {
+    throw new BadRequestException('Invalid user role');
+  }
+  return role;
 }
 
 @Injectable()
@@ -41,8 +57,8 @@ export class UsersService {
         nullableString(body.full_name) || username,
         nullableString(body.phone),
         nullableString(body.avatar_url),
-        nullableString(body.status) || 'ACTIVE',
-        nullableString(body.role) || 'CUSTOMER',
+        userStatus(body.status),
+        userRole(body.role),
       ],
     );
     return result.insertId;
@@ -60,8 +76,8 @@ export class UsersService {
     const fullName = optionalString(body.full_name);
     const phone = optionalString(body.phone);
     const avatarUrl = optionalString(body.avatar_url);
-    const status = optionalString(body.status);
-    const role = optionalString(body.role);
+    const status = body.status === undefined ? undefined : userStatus(body.status);
+    const role = body.role === undefined ? undefined : userRole(body.role);
     const result = await this.db.execute(
       `
         UPDATE users

@@ -1,6 +1,7 @@
 import { Body, Controller, Inject, Post } from '@nestjs/common';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
-import { ChatbotService, ChatbotRequestBody } from './chatbot.service.js';
+import type { ChatbotRequestBody } from './chatbot.service.js';
+import { ChatbotService } from './chatbot.service.js';
 
 @Controller('chatbot')
 export class ChatbotController {

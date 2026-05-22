@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
 import { CartService } from './cart.service.js';
-import { AuthGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import type { RequestUser } from '../db/auth.guard.js';
+import { AuthGuard, CurrentUser } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('cart')
@@ -68,7 +69,7 @@ export class CartController {
     @Param('user_id') userId: string, 
     @Param('product_id') productId: string, 
     @Body() body: any, 
-    @CurrentUser() user: RequestUser
+    @CurrentUser() user: RequestUser,
   ) {
     if (user.id !== parseInt(userId) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden');
@@ -96,7 +97,7 @@ export class CartController {
   async removeFromCart(
     @Param('user_id') userId: string, 
     @Param('product_id') productId: string, 
-    @CurrentUser() user: RequestUser
+    @CurrentUser() user: RequestUser,
   ) {
     if (user.id !== parseInt(userId) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden');

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
 import { UsersService } from './users.service.js';
-import { AuthGuard, AdminGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import type { RequestUser } from '../db/auth.guard.js';
+import { AuthGuard, AdminGuard, CurrentUser } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('users')
@@ -50,10 +51,10 @@ export class UsersController {
     const updateBody = user.role === 'ADMIN'
       ? body
       : {
-          full_name: body.full_name,
-          phone: body.phone,
-          avatar_url: body.avatar_url,
-        };
+        full_name: body.full_name,
+        phone: body.phone,
+        avatar_url: body.avatar_url,
+      };
     await this.usersService.updateUser(id, updateBody);
     return { message: 'User updated successfully' };
   }

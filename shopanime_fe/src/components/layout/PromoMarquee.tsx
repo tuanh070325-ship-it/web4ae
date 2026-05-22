@@ -1,35 +1,35 @@
-import { Link } from "react-router-dom";
-import { Bookmark, Flame, PackageCheck, Sparkles, TicketPercent } from "lucide-react";
+import { Link } from 'react-router-dom';
+import { Bookmark, Flame, PackageCheck, Sparkles, TicketPercent } from 'lucide-react';
 
 const promoMessages = [
   {
-    badge: "HELLO",
-    label: "Welcome to AkibaCore - your manga shelf starts here",
-    to: "/shop",
+    badge: 'HELLO',
+    label: 'Welcome to AkibaCore - your manga shelf starts here',
+    to: '/shop',
     icon: Sparkles,
   },
   {
-    badge: "DROP",
-    label: "Member drop: save up to 24% on selected volumes",
-    to: "/shop?sort=popularity",
+    badge: 'DROP',
+    label: 'Member drop: save up to 24% on selected volumes',
+    to: '/shop?sort=popularity',
     icon: TicketPercent,
   },
   {
-    badge: "FREE SHIP",
-    label: "Orders over $50 unlock free shipping",
-    to: "/shop",
+    badge: 'FREE SHIP',
+    label: 'Orders over $50 unlock free shipping',
+    to: '/shop',
     icon: PackageCheck,
   },
   {
-    badge: "NEW",
-    label: "New manga drop is live - shop fresh volumes",
-    to: "/shop?sort=newest",
+    badge: 'NEW',
+    label: 'New manga drop is live - shop fresh volumes',
+    to: '/shop?sort=newest',
     icon: Flame,
   },
   {
-    badge: "SAVE",
-    label: "Wishlist your favorites before they sell out",
-    to: "/wishlist",
+    badge: 'SAVE',
+    label: 'Wishlist your favorites before they sell out',
+    to: '/wishlist',
     icon: Bookmark,
   },
 ];
@@ -47,7 +47,7 @@ export function PromoMarquee() {
 
       <div
         className="akiba-promo-track flex h-full min-w-max items-center whitespace-nowrap will-change-transform"
-        style={{ animation: "akiba-promo-marquee 15s linear infinite" }}
+        style={{ animation: 'akiba-promo-marquee 15s linear infinite' }}
       >
         {marqueeItems.map((item, index) => {
           const Icon = item.icon;

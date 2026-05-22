@@ -1,5 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import mysql, { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import mysql from 'mysql2/promise';
 import { initializeSchema, seedSchema } from './schema.js';
 
 export interface DatabaseExecutor {
@@ -30,7 +32,7 @@ export class DbService implements OnModuleInit, OnModuleDestroy, DatabaseExecuto
 
     const syncSchema = isEnabled(process.env.DB_SYNC_SCHEMA) || isEnabled(process.env.DB_SYNCHRONIZE);
     const rebuildSchema = isEnabled(process.env.DB_REBUILD_SCHEMA);
-    const seedEnabled = isEnabled(process.env.DB_SEED_ON_START);
+    const seedEnabled = isEnabled(process.env.MOCK_DATA) || isEnabled(process.env.DB_SEED_ON_START);
 
     if (syncSchema || rebuildSchema) {
       await initializeSchema(this, { rebuild: rebuildSchema });

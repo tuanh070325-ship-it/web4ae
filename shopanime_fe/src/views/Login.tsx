@@ -1,32 +1,33 @@
-import { FormEvent, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "motion/react";
-import { ArrowRight, Bookmark, Eye, EyeOff, Heart, LockKeyhole, ShoppingBag, Sparkles, TicketPercent } from "lucide-react";
-import { useAuth } from "../components/auth/AuthProvider";
+import type { FormEvent} from 'react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { ArrowRight, Bookmark, Eye, EyeOff, Heart, LockKeyhole, ShoppingBag, Sparkles, TicketPercent } from 'lucide-react';
+import { useAuth } from '../components/auth/AuthProvider';
 
 const featuredCovers = [
-  { title: "Berserk", image: "https://myanimelist.net/images/manga/1/157897l.jpg", price: "$13.99", tag: "Dark fantasy" },
-  { title: "One Piece", image: "https://myanimelist.net/images/manga/2/253146l.jpg", price: "$15.29", tag: "Member deal" },
-  { title: "Vagabond", image: "https://myanimelist.net/images/manga/1/259070l.jpg", price: "$15.99", tag: "Trending" },
+  { title: 'Berserk', image: 'https://myanimelist.net/images/manga/1/157897l.jpg', price: '$13.99', tag: 'Dark fantasy' },
+  { title: 'One Piece', image: 'https://myanimelist.net/images/manga/2/253146l.jpg', price: '$15.29', tag: 'Member deal' },
+  { title: 'Vagabond', image: 'https://myanimelist.net/images/manga/1/259070l.jpg', price: '$15.99', tag: 'Trending' },
 ];
 
 const benefitBadges = [
-  { icon: Bookmark, label: "Wishlist saved" },
-  { icon: ShoppingBag, label: "Cart synced" },
-  { icon: TicketPercent, label: "Member deals" },
+  { icon: Bookmark, label: 'Wishlist saved' },
+  { icon: ShoppingBag, label: 'Cart synced' },
+  { icon: TicketPercent, label: 'Member deals' },
 ];
 
 function loginContextCopy(redirect: string | null) {
-  if (redirect?.includes("wishlist")) return "Login to open your saved manga list.";
-  if (redirect?.includes("cart") || redirect?.includes("checkout")) return "Login to sync your cart and finish checkout.";
-  if (redirect?.includes("product")) return "Login to save this volume or add it to cart.";
-  return "Continue your manga hunt.";
+  if (redirect?.includes('wishlist')) {return 'Login to open your saved manga list.';}
+  if (redirect?.includes('cart') || redirect?.includes('checkout')) {return 'Login to sync your cart and finish checkout.';}
+  if (redirect?.includes('product')) {return 'Login to save this volume or add it to cart.';}
+  return 'Continue your manga hunt.';
 }
 
 function friendlyLoginError(message: string) {
   const normalized = message.toLowerCase();
-  if (normalized.includes("invalid credentials") || normalized.includes("unauthorized")) return "Email or password is incorrect.";
-  if (normalized.includes("internal server") || normalized.includes("failed to fetch")) return "Login service is temporarily unavailable.";
+  if (normalized.includes('invalid credentials') || normalized.includes('unauthorized')) {return 'Email or password is incorrect.';}
+  if (normalized.includes('internal server') || normalized.includes('failed to fetch')) {return 'Login service is temporarily unavailable.';}
   return message;
 }
 
@@ -34,10 +35,10 @@ export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get("redirect");
+  const redirect = searchParams.get('redirect');
   const contextCopy = useMemo(() => loginContextCopy(redirect), [redirect]);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socialNotice, setSocialNotice] = useState<string | null>(null);
@@ -50,10 +51,10 @@ export function Login() {
     setSubmitting(true);
     try {
       const user = await login({ email, password });
-      const defaultPath = ["ADMIN", "MANAGER"].includes(user.role?.toUpperCase() ?? "") ? "/admin" : "/";
+      const defaultPath = user.role?.toUpperCase() === 'ADMIN' ? '/admin' : '/';
       navigate(redirect || defaultPath, { replace: true });
     } catch (err) {
-      setError(friendlyLoginError(err instanceof Error ? err.message : "Login failed"));
+      setError(friendlyLoginError(err instanceof Error ? err.message : 'Login failed'));
     } finally {
       setSubmitting(false);
     }
@@ -94,15 +95,15 @@ export function Login() {
             <div className="absolute left-2 top-8 h-64 w-64 bg-[#ff0038]/18 blur-3xl" />
             {featuredCovers.map((cover, index) => {
               const positions = [
-                "left-4 top-14 z-30 rotate-[-7deg] 2xl:left-8",
-                "left-[205px] top-0 z-40 rotate-[4deg] 2xl:left-[240px]",
-                "left-[405px] top-20 z-20 rotate-[8deg] 2xl:left-[475px] 2xl:top-16",
+                'left-4 top-14 z-30 rotate-[-7deg] 2xl:left-8',
+                'left-[205px] top-0 z-40 rotate-[4deg] 2xl:left-[240px]',
+                'left-[405px] top-20 z-20 rotate-[8deg] 2xl:left-[475px] 2xl:top-16',
               ];
               return (
                 <motion.div
                   key={cover.title}
                   animate={{ y: [0, index === 1 ? -12 : -7, 0] }}
-                  transition={{ duration: 3 + index * 0.4, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{ duration: 3 + index * 0.4, repeat: Infinity, ease: 'easeInOut' }}
                   className={`absolute w-40 overflow-hidden bg-zinc-950 shadow-[0_28px_70px_rgba(0,0,0,0.58),6px_6px_0_0_rgba(255,0,56,0.58)] 2xl:w-48 ${positions[index]}`}
                 >
                   <div className="aspect-[2/3] overflow-hidden bg-zinc-900">
@@ -121,7 +122,7 @@ export function Login() {
 
             <motion.div
               animate={{ scale: [1, 1.04, 1], rotate: [-2, 2, -2] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
               className="absolute left-[330px] top-[222px] z-50 bg-[#ff0038] px-4 py-3 text-base font-black uppercase tracking-wider text-white shadow-[0_0_26px_rgba(255,0,56,0.62),5px_5px_0_0_rgba(0,0,0,0.8)] 2xl:left-[390px] 2xl:top-[238px] 2xl:px-5 2xl:text-lg"
             >
               -24% member drop
@@ -201,7 +202,7 @@ export function Login() {
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Enter password"
@@ -212,7 +213,7 @@ export function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                     className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-zinc-500 transition-colors hover:bg-black/5 hover:text-black focus:outline-none focus:ring-2 focus:ring-[#ff0038]"
                   >
                     {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
@@ -242,7 +243,7 @@ export function Login() {
                   className="flex h-12 w-full items-center justify-center gap-2 bg-[#ff0038] px-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(255,0,56,0.3),5px_5px_0_0_rgba(0,0,0,0.72)] transition-transform hover:-translate-y-0.5 hover:bg-[#ff315a] hover:shadow-[0_18px_38px_rgba(255,0,56,0.38),2px_2px_0_0_rgba(0,0,0,0.9)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <LockKeyhole className="h-4 w-4" />
-                  {submitting ? "Entering..." : "Enter AkibaCore"}
+                  {submitting ? 'Entering...' : 'Enter AkibaCore'}
                 </button>
               </div>
             </form>
@@ -258,7 +259,7 @@ export function Login() {
               </div>
 
               <div className="mt-5 flex justify-center gap-4">
-                {["Google", "Discord", "GitHub"].map((provider) => (
+                {['Google', 'Discord', 'GitHub'].map((provider) => (
                   <button
                     key={provider}
                     type="button"
@@ -266,7 +267,7 @@ export function Login() {
                     className="flex h-11 w-11 items-center justify-center bg-black/35 text-sm font-black text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-[#ff0038]"
                     aria-label={`${provider} login coming soon`}
                   >
-                    {provider === "Google" ? "G" : provider === "Discord" ? "D" : "GH"}
+                    {provider === 'Google' ? 'G' : provider === 'Discord' ? 'D' : 'GH'}
                   </button>
                 ))}
               </div>
@@ -274,12 +275,12 @@ export function Login() {
 
               <div className="mt-7 flex flex-col items-center gap-3 text-center text-sm text-zinc-400">
                 <p>
-                  Don't have an account?{" "}
+                  Don't have an account?{' '}
                   <Link to="/register" className="font-bold text-[#ff315a] transition-colors hover:text-white">
                     Sign up
                   </Link>
                 </p>
-                <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 1.7, repeat: Infinity, ease: "easeInOut" }} className="w-full">
+                <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 1.7, repeat: Infinity, ease: 'easeInOut' }} className="w-full">
                   <Link
                     to="/shop"
                     className="group flex h-12 w-full items-center justify-center gap-2 bg-white text-xs font-black uppercase tracking-widest text-black shadow-[5px_5px_0_0_#ff0038] transition-transform hover:-translate-y-0.5 hover:bg-[#ff0038] hover:text-white hover:shadow-[2px_2px_0_0_rgba(255,255,255,0.9)]"

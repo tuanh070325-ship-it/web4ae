@@ -1,40 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import { Eye, Search, X } from "lucide-react";
-import { apiGet, apiPut } from "../lib/api";
-import { formatUsd } from "../lib/format";
-import type { ApiResponse, Order, OrderDetails, OrderStatus } from "../lib/types";
-import { AdminPage, AdminTable, adminIconButtonClass, adminInputClass, adminPanelClass, adminSecondaryButtonClass, adminTdClass, adminThClass } from "../components/admin/AdminUI";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { apiGet, apiPut } from '../lib/api';
+import { formatUsd } from '../lib/format';
+import type { ApiResponse, Order, OrderDetails, OrderStatus } from '../lib/types';
+import { AdminPage, adminIconButtonClass, adminInputClass, adminPanelClass } from '../components/admin/AdminUI';
+import { AdminOrdersTable } from '../components/admin/orders/AdminOrdersTable';
 
-const orderStatuses: OrderStatus[] = ["PENDING", "PROCESSING", "SHIPPED", "COMPLETED", "CANCELLED"];
+const orderStatuses: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'];
 
 function orderTotal(order: Order) {
   return order.final_amount ?? order.total_amount ?? order.total ?? 0;
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "N/A";
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function statusClass(status: string) {
-  if (status === "COMPLETED") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-  if (status === "SHIPPED") return "bg-sky-500/15 text-sky-300 border-sky-500/30";
-  if (status === "PROCESSING") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-  if (status === "CANCELLED") return "bg-zinc-500/15 text-zinc-300 border-zinc-500/30";
-  return "bg-red-500/15 text-red-300 border-red-500/30";
+  if (!value) {return 'N/A';}
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(null);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [message, setMessage] = useState<string | null>(null);
 
-  const loadOrders = async () => {
-    const response = await apiGet<ApiResponse<Order[]>>("/orders");
+  const loadOrders = useCallback(async () => {
+    const response = await apiGet<ApiResponse<Order[]>>('/orders');
     setOrders(response.data);
-  };
+  }, []);
 
   useEffect(() => {
     void loadOrders();
@@ -43,7 +36,7 @@ export function AdminOrders() {
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return orders.filter((order) => {
-      const matchesStatus = statusFilter === "ALL" || order.status === statusFilter;
+      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
       const matchesKeyword =
         !keyword ||
         [order.order_code, order.receiver_name, order.receiver_phone, order.shipping_city, order.status, order.id]
@@ -53,17 +46,25 @@ export function AdminOrders() {
     });
   }, [orders, query, statusFilter]);
 
-  const updateOrderStatus = async (order: Order, status: string) => {
+  const updateOrderStatus = useCallback(async (order: Order, status: string) => {
     await apiPut(`/orders/${order.id}/status`, { status });
     setOrders((current) => current.map((item) => (item.id === order.id ? { ...item, status } : item)));
     setSelectedOrder((current) => (current?.id === order.id ? { ...current, status } : current));
     setMessage(`Order ${order.order_code || `#${order.id}`} updated`);
-  };
+  }, []);
 
-  const openDetails = async (order: Order) => {
+  const openDetails = useCallback(async (order: Order) => {
     const response = await apiGet<ApiResponse<OrderDetails>>(`/orders/${order.id}`);
     setSelectedOrder(response.data);
-  };
+  }, []);
+
+  const handleOpenDetails = useCallback((order: Order) => {
+    void openDetails(order);
+  }, [openDetails]);
+
+  const handleUpdateStatus = useCallback((order: Order, status: string) => {
+    void updateOrderStatus(order, status);
+  }, [updateOrderStatus]);
 
   return (
     <AdminPage title="Orders" description="Track fulfillment, inspect order items and update customer order status." message={message}>
@@ -90,54 +91,12 @@ export function AdminOrders() {
         </select>
       </div>
 
-      <AdminTable>
-        <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="border-b border-zinc-800 bg-[#16171d] text-xs uppercase text-zinc-500">
-            <tr>
-              <th className={adminThClass}>Order</th>
-              <th className={adminThClass}>Customer</th>
-              <th className={adminThClass}>Date</th>
-              <th className={adminThClass}>Total</th>
-              <th className={adminThClass}>Status</th>
-              <th className={`${adminThClass} text-right`}>Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {filteredOrders.map((order) => (
-              <tr key={order.id} className="hover:bg-white/[0.03]">
-                <td className={adminTdClass}>
-                  <div className="font-mono text-xs text-zinc-400">{order.order_code || `#${order.id}`}</div>
-                  <div className={`mt-2 inline-flex rounded border px-2 py-1 text-xs font-semibold ${statusClass(order.status)}`}>{order.status}</div>
-                </td>
-                <td className={adminTdClass}>
-                  <div className="font-semibold text-white">{order.receiver_name || order.customer || "Guest"}</div>
-                  <div className="text-xs text-zinc-500">{order.receiver_phone || order.shipping_city || "No contact"}</div>
-                </td>
-                <td className={adminTdClass}>{formatDate(order.created_at || order.date)}</td>
-                <td className={`${adminTdClass} font-semibold text-white`}>{formatUsd(orderTotal(order))}</td>
-                <td className={adminTdClass}>
-                  <select
-                    value={order.status}
-                    onChange={(event) => void updateOrderStatus(order, event.target.value)}
-                    className={`${adminInputClass} h-9 text-xs font-semibold`}
-                  >
-                    {orderStatuses.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className={adminTdClass}>
-                  <div className="flex justify-end">
-                    <button onClick={() => void openDetails(order)} className={adminSecondaryButtonClass}>
-                      <Eye className="h-4 w-4" /> View
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </AdminTable>
+      <AdminOrdersTable
+        orders={filteredOrders}
+        orderStatuses={orderStatuses}
+        onOpenDetails={handleOpenDetails}
+        onUpdateStatus={handleUpdateStatus}
+      />
 
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60">
@@ -155,8 +114,8 @@ export function AdminOrders() {
             <div className="mb-6 grid grid-cols-2 gap-3 text-sm">
               <div className={`${adminPanelClass} p-4`}>
                 <div className="text-xs uppercase text-zinc-500">Customer</div>
-                <div className="mt-1 font-semibold text-white">{selectedOrder.receiver_name || "N/A"}</div>
-                <div className="mt-1 text-zinc-400">{selectedOrder.receiver_phone || "No phone"}</div>
+                <div className="mt-1 font-semibold text-white">{selectedOrder.receiver_name || 'N/A'}</div>
+                <div className="mt-1 text-zinc-400">{selectedOrder.receiver_phone || 'No phone'}</div>
               </div>
               <div className={`${adminPanelClass} p-4`}>
                 <div className="text-xs uppercase text-zinc-500">Status</div>
@@ -173,7 +132,7 @@ export function AdminOrders() {
               <div className={`col-span-2 ${adminPanelClass} p-4`}>
                 <div className="text-xs uppercase text-zinc-500">Shipping address</div>
                 <div className="mt-1 text-white">
-                  {[selectedOrder.shipping_address_line, selectedOrder.shipping_ward, selectedOrder.shipping_district, selectedOrder.shipping_city].filter(Boolean).join(", ") || "N/A"}
+                  {[selectedOrder.shipping_address_line, selectedOrder.shipping_ward, selectedOrder.shipping_district, selectedOrder.shipping_city].filter(Boolean).join(', ') || 'N/A'}
                 </div>
               </div>
             </div>

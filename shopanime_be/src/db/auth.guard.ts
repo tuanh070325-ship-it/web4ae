@@ -1,4 +1,5 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, createParamDecorator, Inject } from '@nestjs/common';
+import type { CanActivate, ExecutionContext} from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, createParamDecorator, Inject } from '@nestjs/common';
 import { DbService } from './db.service.js';
 import { verifyAuthToken } from '../auth/token.js';
 
@@ -49,7 +50,7 @@ export class AdminGuard implements CanActivate {
       throw new UnauthorizedException('Unauthorized: Please authenticate first');
     }
 
-    if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
+    if (user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden: Admin access required');
     }
 

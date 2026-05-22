@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
-import { ChevronRight, ChevronLeft } from "lucide-react";
-import { apiGet } from "../lib/api";
-import { getProductAuthor, getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount } from "../lib/format";
-import type { PaginatedApiResponse, PaginationMeta, Product } from "../lib/types";
-import { Pagination } from "../components/ui/Pagination";
-import { ProductDealPrice } from "../components/ui/ProductDealPrice";
+import { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { apiGet } from '../lib/api';
+import { getProductAuthor, getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount } from '../lib/format';
+import type { PaginatedApiResponse, PaginationMeta, Product } from '../lib/types';
+import { Pagination } from '../components/ui/Pagination';
+import { ProductDealPrice } from '../components/ui/ProductDealPrice';
 
 export function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -14,30 +14,30 @@ export function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const featuredRef = useRef<HTMLElement | null>(null);
-  const productPage = Math.max(1, Number(searchParams.get("featuredPage") || 1));
+  const productPage = Math.max(1, Number(searchParams.get('featuredPage') || 1));
 
   const BANNERS = [
     {
       id: 1,
-      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8cqiMEt_klQIpvvzI-WxZXfQdlHg0RrlueO7_MdOru7UD2VQ_FyVY65tGk0Cq0kFLXTwQjvfhKy9MCIMBlK1DdFKb-t-CIXbr5wDAQ4A&s=10",
-      title: "JUJUTSU KAISEN",
-      subtitle: "CURSED CLASH IS HERE",
-      button: "SHOP COLLECTION"
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT8cqiMEt_klQIpvvzI-WxZXfQdlHg0RrlueO7_MdOru7UD2VQ_FyVY65tGk0Cq0kFLXTwQjvfhKy9MCIMBlK1DdFKb-t-CIXbr5wDAQ4A&s=10',
+      title: 'JUJUTSU KAISEN',
+      subtitle: 'CURSED CLASH IS HERE',
+      button: 'SHOP COLLECTION',
     },
     {
       id: 2,
-      image: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2690&auto=format&fit=crop",
-      title: "CHAINSAW MAN",
-      subtitle: "NEW VOLUMES DROP",
-      button: "READ NOW"
+      image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2690&auto=format&fit=crop',
+      title: 'CHAINSAW MAN',
+      subtitle: 'NEW VOLUMES DROP',
+      button: 'READ NOW',
     },
     {
       id: 3,
-      image: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=2574&auto=format&fit=crop",
-      title: "DEMON SLAYER",
-      subtitle: "EXCLUSIVE BOX SET",
-      button: "PRE-ORDER"
-    }
+      image: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=2574&auto=format&fit=crop',
+      title: 'DEMON SLAYER',
+      subtitle: 'EXCLUSIVE BOX SET',
+      button: 'PRE-ORDER',
+    },
   ];
 
   useEffect(() => {
@@ -48,19 +48,19 @@ export function Home() {
           setPagination(data.meta);
         }
       })
-      .catch(err => console.error("Error fetching products:", err));
+      .catch(err => console.error('Error fetching products:', err));
   }, [productPage]);
 
   const changeFeaturedPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
     if (page > 1) {
-      nextParams.set("featuredPage", String(page));
+      nextParams.set('featuredPage', String(page));
     } else {
-      nextParams.delete("featuredPage");
+      nextParams.delete('featuredPage');
     }
     setSearchParams(nextParams);
     window.setTimeout(() => {
-      featuredRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      featuredRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 0);
   };
 
@@ -81,9 +81,9 @@ export function Home() {
             initial={{ opacity: 0, scale: 1.1, rotateY: 15 }}
             animate={{ opacity: 1, scale: 1, rotateY: 0 }}
             exit={{ opacity: 0, scale: 0.9, rotateY: -15 }}
-            transition={{ duration: 0.7, type: "spring", bounce: 0.3 }}
+            transition={{ duration: 0.7, type: 'spring', bounce: 0.3 }}
             className="absolute inset-0 w-full h-full"
-            style={{ perspective: "1000px" }}
+            style={{ perspective: '1000px' }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent z-10" />
             <img 
@@ -101,7 +101,7 @@ export function Home() {
                 <div className="inline-block bg-red-600 text-white font-black tracking-widest px-3 py-1 mb-4 text-sm transform -skew-x-12 border-0">
                   TRENDING NOW
                 </div>
-                <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-none mb-4 !italic" style={{ textShadow: "5px 5px 0px #e63946" }}>
+                <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-none mb-4 !italic" style={{ textShadow: '5px 5px 0px #e63946' }}>
                   {BANNERS[currentSlide].title}
                 </h1>
                 <p className="text-xl md:text-2xl font-black text-zinc-300 mb-10 uppercase tracking-widest bg-black/40 inline-block px-4 py-2 border-l-4 border-red-600">
@@ -144,7 +144,7 @@ export function Home() {
             <button 
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`h-2 transition-all outline-none border-0 ${idx === currentSlide ? "w-12 bg-red-600" : "w-4 bg-zinc-600 hover:bg-zinc-400"}`}
+              className={`h-2 transition-all outline-none border-0 ${idx === currentSlide ? 'w-12 bg-red-600' : 'w-4 bg-zinc-600 hover:bg-zinc-400'}`}
             />
           ))}
         </div>
@@ -184,32 +184,32 @@ export function Home() {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: idx * 0.1, type: "spring", bounce: 0.4 }}
+              transition={{ delay: idx * 0.1, type: 'spring', bounce: 0.4 }}
               key={product.id}
             >
               <Link to={getProductPath(product)} className="group block border-0 outline-none">
                 <div className="w-full aspect-[2/3] relative mb-6">
                   {/* The book floating without border */}
-                   <motion.div
-                      whileHover={{ scale: 1.05, rotateY: 10, rotateX: 5 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      className="w-full h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_50px_rgba(230,57,70,0.3)] transform-gpu"
-                   >
-                       <img 
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                       />
-                   </motion.div>
-                   {hasProductDiscount(product) && (
-                      <motion.div
-                        animate={{ y: [0, -5, 0], rotate: [7, 3, 7] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute -right-3 -top-4 z-10 border-0 bg-[#ff315a] px-4 py-2 text-base font-black uppercase tracking-wider text-white shadow-[0_0_28px_rgba(255,49,90,0.68),4px_4px_0_0_rgba(0,0,0,0.75)]"
-                      >
-                         -{getProductDiscountPercent(product)}% OFF
-                      </motion.div>
-                   )}
+                  <motion.div
+                    whileHover={{ scale: 1.05, rotateY: 10, rotateX: 5 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="w-full h-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_50px_rgba(230,57,70,0.3)] transform-gpu"
+                  >
+                    <img 
+                      src={getProductImage(product)}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.div>
+                  {hasProductDiscount(product) && (
+                    <motion.div
+                      animate={{ y: [0, -5, 0], rotate: [7, 3, 7] }}
+                      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute -right-3 -top-4 z-10 border-0 bg-[#ff315a] px-4 py-2 text-base font-black uppercase tracking-wider text-white shadow-[0_0_28px_rgba(255,49,90,0.68),4px_4px_0_0_rgba(0,0,0,0.75)]"
+                    >
+                      -{getProductDiscountPercent(product)}% OFF
+                    </motion.div>
+                  )}
                 </div>
                 <div className="pt-2 text-center md:text-left">
                   <h3 className="font-black text-sm md:text-[15px] leading-tight uppercase tracking-wide group-hover:text-red-500 transition-colors line-clamp-2">

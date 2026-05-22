@@ -1,31 +1,32 @@
-import { FormEvent, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "motion/react";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from "lucide-react";
-import { useAuth } from "../components/auth/AuthProvider";
+import type { FormEvent} from 'react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from 'lucide-react';
+import { useAuth } from '../components/auth/AuthProvider';
 
 function passwordScore(password: string) {
   let score = 0;
-  if (password.length >= 6) score += 1;
-  if (password.length >= 10) score += 1;
-  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  if (password.length >= 6) {score += 1;}
+  if (password.length >= 10) {score += 1;}
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) {score += 1;}
+  if (/\d/.test(password)) {score += 1;}
+  if (/[^A-Za-z0-9]/.test(password)) {score += 1;}
   return Math.min(score, 4);
 }
 
 function strengthLabel(score: number) {
-  if (score >= 4) return "Strong";
-  if (score >= 3) return "Good";
-  if (score >= 2) return "Fair";
-  return "Weak";
+  if (score >= 4) {return 'Strong';}
+  if (score >= 3) {return 'Good';}
+  if (score >= 2) {return 'Fair';}
+  return 'Weak';
 }
 
 function friendlyRegisterError(message: string) {
   const normalized = message.toLowerCase();
-  if (normalized.includes("already exists")) return "Username or email already exists.";
-  if (normalized.includes("password")) return "Password must contain at least 6 characters.";
-  if (normalized.includes("failed to fetch") || normalized.includes("internal server")) return "Register service is temporarily unavailable.";
+  if (normalized.includes('already exists')) {return 'Username or email already exists.';}
+  if (normalized.includes('password')) {return 'Password must contain at least 6 characters.';}
+  if (normalized.includes('failed to fetch') || normalized.includes('internal server')) {return 'Register service is temporarily unavailable.';}
   return message;
 }
 
@@ -33,10 +34,10 @@ export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [socialNotice, setSocialNotice] = useState<string | null>(null);
@@ -50,15 +51,15 @@ export function Register() {
     setError(null);
     setSocialNotice(null);
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
     setSubmitting(true);
     try {
       await register({ username, email, password, full_name: username });
-      navigate(searchParams.get("redirect") || "/", { replace: true });
+      navigate(searchParams.get('redirect') || '/', { replace: true });
     } catch (err) {
-      setError(friendlyRegisterError(err instanceof Error ? err.message : "Register failed"));
+      setError(friendlyRegisterError(err instanceof Error ? err.message : 'Register failed'));
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +140,7 @@ export function Register() {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Build a secure password"
@@ -151,7 +152,7 @@ export function Register() {
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
                   className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-zinc-500 transition-colors hover:text-white"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                 </button>
@@ -164,11 +165,11 @@ export function Register() {
                   <motion.div
                     key={level}
                     animate={{ opacity: score >= level ? 1 : 0.28 }}
-                    className={`h-1.5 flex-1 ${score >= level ? "bg-[#ff0038]" : "bg-zinc-800"}`}
+                    className={`h-1.5 flex-1 ${score >= level ? 'bg-[#ff0038]' : 'bg-zinc-800'}`}
                   />
                 ))}
               </div>
-              <p className={`mt-2 text-xs font-semibold ${score >= 3 ? "text-[#ff8aa0]" : "text-red-500"}`}>Strength: {strength}</p>
+              <p className={`mt-2 text-xs font-semibold ${score >= 3 ? 'text-[#ff8aa0]' : 'text-red-500'}`}>Strength: {strength}</p>
             </div>
 
             <div className="group pt-1">
@@ -180,7 +181,7 @@ export function Register() {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="Confirm password"
@@ -192,7 +193,7 @@ export function Register() {
                   type="button"
                   onClick={() => setShowConfirmPassword((current) => !current)}
                   className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-zinc-500 transition-colors hover:text-white"
-                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                 >
                   {showConfirmPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                 </button>
@@ -207,7 +208,7 @@ export function Register() {
                 className="flex h-12 w-full items-center justify-center gap-2 bg-[#ff0038] px-4 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_32px_rgba(255,0,56,0.3),5px_5px_0_0_rgba(0,0,0,0.72)] transition-transform hover:-translate-y-0.5 hover:bg-[#ff315a] hover:shadow-[0_18px_38px_rgba(255,0,56,0.38),2px_2px_0_0_rgba(0,0,0,0.9)] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Sparkles className="h-4 w-4" />
-                {submitting ? "Creating shelf..." : "Create account"}
+                {submitting ? 'Creating shelf...' : 'Create account'}
               </button>
             </div>
           </form>
@@ -223,7 +224,7 @@ export function Register() {
             </div>
 
             <div className="mt-6 flex justify-center gap-4">
-              {["Google", "Discord", "GitHub"].map((provider) => (
+              {['Google', 'Discord', 'GitHub'].map((provider) => (
                 <button
                   key={provider}
                   type="button"
@@ -231,7 +232,7 @@ export function Register() {
                   className="flex h-11 w-11 items-center justify-center bg-[#18191d] text-sm font-black text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-[#ff0038]"
                   aria-label={`${provider} sign up coming soon`}
                 >
-                  {provider === "Google" ? "G" : provider === "Discord" ? "D" : "GH"}
+                  {provider === 'Google' ? 'G' : provider === 'Discord' ? 'D' : 'GH'}
                 </button>
               ))}
             </div>
@@ -240,7 +241,7 @@ export function Register() {
 
           <div className="mt-8 flex flex-col items-center gap-4 text-center text-sm text-zinc-500">
             <p>
-              Already a member?{" "}
+              Already a member?{' '}
               <Link to="/login" className="font-bold text-zinc-200 underline decoration-[#ff0038] underline-offset-4 transition-colors hover:text-white">
                 Log in
               </Link>

@@ -14,6 +14,17 @@
     "frontend:start": "npm --prefix shopanime_fe run start",
     "preview": "npm run frontend:start",
     "clean": "node -e \"fs.rmSync('shopanime_fe/.next',{recursive:true,force:true});fs.rmSync('shopanime_be/dist',{recursive:true,force:true})\"",
-    "lint": "npm --prefix shopanime_be run build && npm --prefix shopanime_fe run typecheck"
+    "typecheck": "npm --prefix shopanime_be run build && npm --prefix shopanime_fe run typecheck",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "verify": "npm run typecheck && npm run lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
+    "typescript-eslint": "^8.59.4"
   }
 }

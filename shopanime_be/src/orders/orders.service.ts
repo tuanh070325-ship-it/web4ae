@@ -1,6 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DbService } from '../db/db.service.js';
 
+const ORDER_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const;
+
+function orderStatus(value: unknown) {
+  const status = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (!ORDER_STATUSES.includes(status as typeof ORDER_STATUSES[number])) {
+    throw new BadRequestException('Invalid order status');
+  }
+  return status;
+}
+
 @Injectable()
 export class OrdersService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
@@ -25,6 +35,16 @@ export class OrdersService {
 
   checkout(body: any) {
     return this.db.transaction(async (tx) => {
+      const userId = Number(body.user_id);
+      if (!Number.isInteger(userId) || userId <= 0) {
+        throw new BadRequestException('Valid user_id is required');
+      }
+
+      const user = await tx.one('SELECT id FROM users WHERE id = ?', [userId]);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
       const requestedItems = Array.isArray(body.items) ? body.items : [];
       const isBuyNowCheckout = requestedItems.length > 0;
       let cartItems: any[] = [];
@@ -69,7 +89,7 @@ export class OrdersService {
             WHERE c.user_id = ?
             FOR UPDATE
           `,
-          [body.user_id],
+          [userId],
         );
       }
 
@@ -99,7 +119,7 @@ export class OrdersService {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)
         `,
         [
-          body.user_id,
+          userId,
           orderCode,
           body.receiver_name,
           body.receiver_phone,
@@ -141,7 +161,7 @@ export class OrdersService {
       }
 
       if (!isBuyNowCheckout) {
-        await tx.execute('DELETE FROM carts WHERE user_id = ?', [body.user_id]);
+        await tx.execute('DELETE FROM carts WHERE user_id = ?', [userId]);
       }
 
       return { orderId: orderResult.insertId, order_code: orderCode, final_amount: finalAmount };
@@ -149,7 +169,7 @@ export class OrdersService {
   }
 
   async updateOrderStatus(id: string, status: string) {
-    const result = await this.db.execute('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
+    const result = await this.db.execute('UPDATE orders SET status = ? WHERE id = ?', [orderStatus(status), id]);
     if (result.affectedRows === 0) {
       throw new NotFoundException('Order not found');
     }

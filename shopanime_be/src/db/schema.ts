@@ -1,11 +1,15 @@
 import { Logger } from '@nestjs/common';
-import { RowDataPacket } from 'mysql2/promise';
+import type { RowDataPacket } from 'mysql2/promise';
 import { mockData } from '../../mockData.js';
+import { encodePasswordHash, isPlainScryptPasswordHash } from '../auth/password.js';
 import type { DatabaseExecutor } from './db.service.js';
 
 const logger = new Logger('DatabaseSchema');
+const MOCK_DATA_SEED_KEY = 'mock_data_v1';
+const DEMO_PASSWORD_HASH = 'base64:c2NyeXB0OmIyNTk2MWVhMDNhZDZkMmRlNzU1ZjQ4ZmM0ZmMxNTgzOjk2YTA0ZTEzMDRlNzRjYWIyZDJlZGU2YTIxNDEwYjMwMzM5ZDA4ZmNjZGExOTExM2IxODM5ZWI3MzI0NGNkYzhkOTJhYTdhMmFhNWU4ODBhZmFlZTU3OTY0YWMwZDdmYjA2MGU3ZDAxMzM2ODJkZTA5MGNhZGRlMDA4YmJmYjQ3';
 
 const tables = [
+  'app_seed_runs',
   'post_comments',
   'posts',
   'reviews',
@@ -26,6 +30,11 @@ const tables = [
 ];
 
 const schemaStatements = [
+  `CREATE TABLE IF NOT EXISTS app_seed_runs (
+    seed_key VARCHAR(120) NOT NULL PRIMARY KEY,
+    executed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS users (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(120) NOT NULL UNIQUE,
@@ -319,6 +328,63 @@ const productColumnMigrations = [
   { column: 'external_rating_source', ddl: 'ADD COLUMN external_rating_source VARCHAR(80) NULL AFTER external_rating_count' },
 ];
 
+const indexDefinitions = [
+  { table: 'products', name: 'idx_products_status_created', columns: 'status, created_at' },
+  { table: 'products', name: 'idx_products_price', columns: 'price' },
+  { table: 'products', name: 'idx_products_category_author', columns: 'category_id, author_id' },
+  { table: 'orders', name: 'idx_orders_user_status_created', columns: 'user_id, status, created_at' },
+  { table: 'reviews', name: 'idx_reviews_product_status', columns: 'product_id, status, created_at' },
+  { table: 'reviews', name: 'idx_reviews_order', columns: 'order_id' },
+  { table: 'posts', name: 'idx_posts_user_status_created', columns: 'user_id, status, created_at' },
+  { table: 'post_comments', name: 'idx_post_comments_post_parent', columns: 'post_id, parent_id' },
+  { table: 'inventory_transactions', name: 'idx_inventory_product_created', columns: 'product_id, created_at' },
+];
+
+const foreignKeyDefinitions = [
+  {
+    name: 'fk_orders_shipping_address',
+    cleanup: `
+      UPDATE orders o
+      LEFT JOIN user_addresses ua ON o.shipping_address_id = ua.id
+      SET o.shipping_address_id = NULL
+      WHERE o.shipping_address_id IS NOT NULL AND ua.id IS NULL
+    `,
+    ddl: `
+      ALTER TABLE orders
+      ADD CONSTRAINT fk_orders_shipping_address
+      FOREIGN KEY (shipping_address_id) REFERENCES user_addresses(id) ON DELETE SET NULL
+    `,
+  },
+  {
+    name: 'fk_reviews_order',
+    cleanup: `
+      UPDATE reviews r
+      LEFT JOIN orders o ON r.order_id = o.id
+      SET r.order_id = NULL
+      WHERE r.order_id IS NOT NULL AND o.id IS NULL
+    `,
+    ddl: `
+      ALTER TABLE reviews
+      ADD CONSTRAINT fk_reviews_order
+      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+    `,
+  },
+  {
+    name: 'fk_post_comments_parent',
+    cleanup: `
+      UPDATE post_comments pc
+      LEFT JOIN post_comments parent ON pc.parent_id = parent.id
+      SET pc.parent_id = NULL
+      WHERE pc.parent_id IS NOT NULL AND parent.id IS NULL
+    `,
+    ddl: `
+      ALTER TABLE post_comments
+      ADD CONSTRAINT fk_post_comments_parent
+      FOREIGN KEY (parent_id) REFERENCES post_comments(id) ON DELETE CASCADE
+    `,
+  },
+];
+
 async function ensureProductColumns(db: DatabaseExecutor) {
   for (const migration of productColumnMigrations) {
     const existing = await db.one<RowDataPacket & { total: number }>(
@@ -378,6 +444,101 @@ async function ensureProductColumns(db: DatabaseExecutor) {
   `);
 }
 
+async function ensureIndexes(db: DatabaseExecutor) {
+  for (const index of indexDefinitions) {
+    const existing = await db.one<RowDataPacket & { total: number }>(
+      `
+        SELECT COUNT(*) AS total
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND INDEX_NAME = ?
+      `,
+      [index.table, index.name],
+    );
+
+    if (!existing?.total) {
+      await db.execute(`ALTER TABLE ${index.table} ADD INDEX ${index.name} (${index.columns})`);
+      logger.log(`Added index ${index.table}.${index.name}`);
+    }
+  }
+}
+
+async function ensureForeignKeys(db: DatabaseExecutor) {
+  for (const foreignKey of foreignKeyDefinitions) {
+    const existing = await db.one<RowDataPacket & { total: number }>(
+      `
+        SELECT COUNT(*) AS total
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+          AND CONSTRAINT_NAME = ?
+      `,
+      [foreignKey.name],
+    );
+
+    if (existing?.total) {
+      continue;
+    }
+
+    await db.execute(foreignKey.cleanup);
+    await db.execute(foreignKey.ddl);
+    logger.log(`Added foreign key ${foreignKey.name}`);
+  }
+}
+
+async function ensureBase64PasswordHashes(db: DatabaseExecutor) {
+  const legacySeedResult = await db.execute(
+    'UPDATE users SET password_hash = ? WHERE password_hash = ?',
+    [DEMO_PASSWORD_HASH, 'dev-password-hash'],
+  );
+  const users = await db.query<RowDataPacket & { id: number; password_hash: string }>(
+    `
+      SELECT id, password_hash
+      FROM users
+      WHERE password_hash LIKE 'scrypt:%'
+    `,
+  );
+
+  for (const user of users) {
+    if (!isPlainScryptPasswordHash(user.password_hash)) {
+      continue;
+    }
+
+    await db.execute(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      [encodePasswordHash(user.password_hash), user.id],
+    );
+  }
+
+  const migratedCount = legacySeedResult.affectedRows + users.length;
+  if (migratedCount > 0) {
+    logger.log(`Migrated ${migratedCount} password hashes to base64-wrapped scrypt format.`);
+  }
+}
+
+async function normalizeUserRoles(db: DatabaseExecutor) {
+  const result = await db.execute(
+    "UPDATE users SET role = 'CUSTOMER' WHERE role NOT IN ('ADMIN', 'CUSTOMER')",
+  );
+
+  if (result.affectedRows > 0) {
+    logger.log(`Normalized ${result.affectedRows} unsupported user roles to CUSTOMER.`);
+  }
+}
+
+async function hasSeedRun(db: DatabaseExecutor, seedKey: string) {
+  const existing = await db.one<RowDataPacket & { seed_key: string }>(
+    'SELECT seed_key FROM app_seed_runs WHERE seed_key = ?',
+    [seedKey],
+  );
+  return Boolean(existing);
+}
+
+async function recordSeedRun(db: DatabaseExecutor, seedKey: string) {
+  await db.execute('INSERT IGNORE INTO app_seed_runs (seed_key) VALUES (?)', [seedKey]);
+}
+
 export async function initializeSchema(db: DatabaseExecutor, options: { rebuild: boolean }) {
   if (options.rebuild) {
     logger.warn('DB_REBUILD_SCHEMA is enabled. Dropping and recreating application tables.');
@@ -393,12 +554,22 @@ export async function initializeSchema(db: DatabaseExecutor, options: { rebuild:
   }
 
   await ensureProductColumns(db);
+  await ensureForeignKeys(db);
+  await ensureIndexes(db);
+  await ensureBase64PasswordHashes(db);
+  await normalizeUserRoles(db);
 }
 
 export async function seedSchema(db: DatabaseExecutor) {
+  if (await hasSeedRun(db, MOCK_DATA_SEED_KEY)) {
+    logger.log(`Mock data seed skipped because ${MOCK_DATA_SEED_KEY} already ran.`);
+    return;
+  }
+
   const productCount = await db.one<RowDataPacket & { total: number }>('SELECT COUNT(*) AS total FROM products');
   if ((productCount?.total || 0) > 0) {
-    logger.log('Seed skipped because products already exist.');
+    await recordSeedRun(db, MOCK_DATA_SEED_KEY);
+    logger.log('Mock data seed skipped because products already exist. Seed marker recorded.');
     return;
   }
 
@@ -406,7 +577,34 @@ export async function seedSchema(db: DatabaseExecutor) {
     await db.execute(
       `INSERT IGNORE INTO users (id, username, email, password_hash, full_name, phone, avatar_url, status, role, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user.id, user.username, user.email, 'dev-password-hash', user.full_name, user.phone, user.avatar_url, user.status, user.id === 1 ? 'ADMIN' : 'CUSTOMER', user.created_at],
+      [user.id, user.username, user.email, user.password_hash, user.full_name, user.phone, user.avatar_url, user.status, user.role, user.created_at],
+    );
+  }
+
+  for (const address of mockData.user_addresses) {
+    await db.execute(
+      `
+        INSERT IGNORE INTO user_addresses (
+          id, user_id, receiver_name, receiver_phone, address_line, ward, district,
+          city, country, postal_code, address_type, is_default, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        address.id,
+        address.user_id,
+        address.receiver_name,
+        address.receiver_phone,
+        address.address_line,
+        address.ward,
+        address.district,
+        address.city,
+        address.country,
+        address.postal_code,
+        address.address_type,
+        address.is_default ? 1 : 0,
+        address.created_at,
+        address.updated_at,
+      ],
     );
   }
 
@@ -495,23 +693,72 @@ export async function seedSchema(db: DatabaseExecutor) {
     );
   }
 
+  for (const productCategory of mockData.product_categories) {
+    await db.execute(
+      'INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)',
+      [productCategory.product_id, productCategory.category_id],
+    );
+  }
+
+  for (const transaction of mockData.inventory_transactions) {
+    await db.execute(
+      `
+        INSERT IGNORE INTO inventory_transactions (
+          id, product_id, variant_id, type, quantity, before_quantity, after_quantity,
+          note, created_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        transaction.id,
+        transaction.product_id,
+        transaction.variant_id,
+        transaction.type,
+        transaction.quantity,
+        transaction.before_quantity,
+        transaction.after_quantity,
+        transaction.note,
+        transaction.created_by,
+        transaction.created_at,
+      ],
+    );
+  }
+
+  for (const cart of mockData.carts) {
+    await db.execute(
+      'INSERT IGNORE INTO carts (id, user_id, product_id, quantity, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [cart.id, cart.user_id, cart.product_id, cart.quantity, cart.created_at, cart.updated_at],
+    );
+  }
+
+  for (const wishlist of mockData.wishlists) {
+    await db.execute(
+      'INSERT IGNORE INTO wishlists (id, user_id, product_id, created_at) VALUES (?, ?, ?, ?)',
+      [wishlist.id, wishlist.user_id, wishlist.product_id, wishlist.created_at],
+    );
+  }
+
   for (const order of mockData.orders) {
     await db.execute(
       `INSERT IGNORE INTO orders (
         id, user_id, order_code, receiver_name, shipping_address_line, shipping_city,
-        total_amount, final_amount, status, payment_status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        shipping_address_id, subtotal_amount, shipping_fee, total_amount, final_amount,
+        status, payment_status, shipping_method, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         order.id,
-        order.user_id <= 2 ? order.user_id : 1,
+        order.user_id,
         order.order_code,
         order.receiver_name,
         order.shipping_address_line,
         order.shipping_city,
+        order.shipping_address_id,
+        order.subtotal_amount,
+        order.shipping_fee,
         order.total_amount,
-        order.total_amount,
+        order.final_amount,
         order.status,
         order.payment_status,
+        order.shipping_method,
         order.created_at,
       ],
     );
@@ -536,6 +783,16 @@ export async function seedSchema(db: DatabaseExecutor) {
     ]);
   }
 
+  for (const comment of mockData.post_comments) {
+    await db.execute(
+      `
+        INSERT IGNORE INTO post_comments (id, post_id, user_id, parent_id, content, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [comment.id, comment.post_id, comment.user_id, comment.parent_id, comment.content, comment.status, comment.created_at],
+    );
+  }
+
   for (const review of mockData.reviews) {
     await db.execute(
       'INSERT IGNORE INTO reviews (id, user_id, product_id, order_id, rating, comment, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -543,5 +800,25 @@ export async function seedSchema(db: DatabaseExecutor) {
     );
   }
 
+  for (const banner of mockData.banners) {
+    await db.execute(
+      'INSERT IGNORE INTO banners (id, image_url, link_url, title, sort_order, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [banner.id, banner.image_url, banner.link_url, banner.title, banner.sort_order, banner.status, banner.created_at],
+    );
+  }
+
+  await db.execute(`
+    UPDATE products p
+    LEFT JOIN (
+      SELECT product_id, AVG(rating) AS average_rating, COUNT(*) AS review_count
+      FROM reviews
+      WHERE status = 'APPROVED'
+      GROUP BY product_id
+    ) rs ON rs.product_id = p.id
+    SET p.average_rating = COALESCE(rs.average_rating, 0),
+        p.review_count = COALESCE(rs.review_count, 0)
+  `);
+
+  await recordSeedRun(db, MOCK_DATA_SEED_KEY);
   logger.log('Seed data inserted.');
 }

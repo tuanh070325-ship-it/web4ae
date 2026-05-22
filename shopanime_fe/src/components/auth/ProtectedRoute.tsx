@@ -1,5 +1,5 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "./AuthProvider";
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from './AuthProvider';
 
 export function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();

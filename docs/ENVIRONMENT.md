@@ -1,90 +1,98 @@
 # Environment Configuration
 
-AkibaCore is split into two independent apps. Each app owns its own `.env` file and can run without reading configuration from the repository root.
-
-## Files
+AkibaCore has two apps with separate environment files.
 
 ```text
-shopanime_be/.env.example     Backend template. Commit this.
+shopanime_be/.env.example     Backend template. Commit this file.
 shopanime_be/.env             Backend local values. Do not commit.
-shopanime_fe/.env.example     Frontend template. Commit this.
+shopanime_fe/.env.example     Frontend template. Commit this file.
 shopanime_fe/.env             Frontend local values. Do not commit.
 ```
 
-There is no required root `.env`.
-
-## Backend Env
+## Backend
 
 Backend values live in `shopanime_be/.env`.
 
-| Variable | Purpose |
-| --- | --- |
-| `NODE_ENV` | Runtime mode |
-| `PORT` | Backend listen port, default `4000` |
-| `API_PREFIX` | API prefix, default `api` |
-| `FRONTEND_URL` | CORS allowed frontend origins |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
-| `DB_CONNECTION_LIMIT` | MySQL pool size |
-| `DB_SYNC_SCHEMA` | Create missing schema objects |
-| `DB_REBUILD_SCHEMA` | Destructive rebuild switch |
-| `DB_SEED_ON_START` | Seed demo data when products are empty |
-| `JWT_SECRET` | Token signing secret |
-| `N8N_CHATBOT_WEBHOOK_URL` | n8n production webhook URL used by the backend chatbot proxy |
-| `N8N_CHATBOT_TIMEOUT_MS` | Timeout for chatbot webhook requests, default `30000` |
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NODE_ENV` | Yes | Runtime mode, usually `development` locally |
+| `PORT` | Yes | Backend port, default `4000` |
+| `API_PREFIX` | Yes | API prefix, default `api` |
+| `FRONTEND_URL` | Yes | Allowed CORS origin, for example `http://localhost:3000` |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Yes | MySQL connection |
+| `DB_CONNECTION_LIMIT` | No | MySQL pool size, default `10` |
+| `DB_SYNC_SCHEMA` | Yes | `true` creates missing tables, columns, indexes, and safe FK constraints |
+| `DB_REBUILD_SCHEMA` | Yes | `true` drops and recreates app tables. Development only |
+| `MOCK_DATA` | Yes | `true` seeds demo data once, tracked by `app_seed_runs` |
+| `DB_SEED_ON_START` | No | Legacy seed flag. Kept for compatibility; prefer `MOCK_DATA` |
+| `JWT_SECRET` | Yes | JWT signing secret |
+| `SESSION_SECRET`, `COOKIE_SECRET`, `ENCRYPTION_KEY`, `PASSWORD_PEPPER` | Yes | Application secrets |
+| `N8N_CHATBOT_WEBHOOK_URL` | No | n8n webhook used by chatbot proxy |
+| `N8N_CHATBOT_TIMEOUT_MS` | No | Chatbot webhook timeout |
+| `KEY_GEMINI` | No | Gemini API key for admin product description AI |
+| `GEMINI_MODEL` | No | Gemini model, default `gemini-3-flash-preview` |
+| `GEMINI_MAX_OUTPUT_TOKENS` | No | Product AI max output tokens, default `5000` |
+| `GEMINI_TIMEOUT_MS` | No | Gemini request timeout |
 
-Run backend independently:
+Recommended local database flags:
 
-```bash
-cd shopanime_be
-copy .env.example .env
-npm install
-npm run dev
+```env
+DB_SYNC_SCHEMA=true
+DB_REBUILD_SCHEMA=false
+MOCK_DATA=true
+DB_SEED_ON_START=false
 ```
 
-## Frontend Env
+Production database flags:
+
+```env
+DB_SYNC_SCHEMA=true
+DB_REBUILD_SCHEMA=false
+MOCK_DATA=false
+DB_SEED_ON_START=false
+```
+
+`MOCK_DATA=true` is safe to leave on in local development because the backend writes a marker into `app_seed_runs` and will not insert mock data again. If the database already has products before the marker exists, the backend records the marker and skips mock insertion to avoid polluting real data.
+
+## Password Hash Format
+
+Backend-created passwords are stored in MySQL as Base64-wrapped scrypt hashes:
+
+```text
+base64:<Base64 of "scrypt:<salt>:<derived-key>">
+```
+
+Base64 is not the security mechanism. It is only the display/storage wrapper. Password verification still uses `scrypt` with a random salt. Existing `scrypt:<salt>:<derived-key>` rows and old local `dev-password-hash` mock rows are migrated automatically on backend startup when schema sync is enabled.
+
+## Frontend
 
 Frontend values live in `shopanime_fe/.env`.
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | Public backend API URL used by browser code |
-| `NEXT_PUBLIC_APP_NAME` | Public app display name |
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Browser API URL, usually `http://localhost:4000/api` |
+| `NEXT_PUBLIC_APP_NAME` | No | Public app display name |
 
-Run frontend independently:
+## Local Setup
 
-```bash
-cd shopanime_fe
-copy .env.example .env
-npm install
-npm run dev
+```powershell
+copy shopanime_be\.env.example shopanime_be\.env
+copy shopanime_fe\.env.example shopanime_fe\.env
+npm --prefix shopanime_be install
+npm --prefix shopanime_fe install
 ```
 
-## Docker
+Start backend and frontend in two terminals:
 
-Each app has its own Dockerfile:
-
-```text
-shopanime_be/Dockerfile
-shopanime_fe/Dockerfile
+```powershell
+npm run backend:dev
+npm run frontend:dev
 ```
-
-The root `docker-compose.yml` only orchestrates services for local development. It builds each app from its own folder context and passes each app's own `.env` file with `env_file`.
-
-Docker logs are capped in `docker-compose.yml` with `max-size: 10m` and `max-file: 3` for each service. The Dockerfiles also avoid copying local build output, local env files, and `node_modules` into the build context.
 
 ## Secret Hygiene
 
-- Never commit `.env`.
-- Commit only `.env.example`.
-- Generate real secrets with:
+Never commit `.env`. Generate strong local secrets with:
 
-```bash
+```powershell
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
-
-## Common Mistakes
-
-- Do not define legacy `VITE_*` variables; the frontend uses Next.js.
-- Do not define frontend `NEXT_PUBLIC_*` variables in `shopanime_be/.env`.
-- Do not define DB/JWT secrets in `shopanime_fe/.env`.
-- Do not set `DB_REBUILD_SCHEMA=true` unless you intentionally want to drop app tables.

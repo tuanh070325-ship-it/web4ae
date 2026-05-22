@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { DbService } from '../db/db.service.js';
-import { RequestUser } from '../db/auth.guard.js';
+import type { RequestUser } from '../db/auth.guard.js';
 import { createAuthToken } from './token.js';
 import { hashPassword, verifyPassword } from './password.js';
 

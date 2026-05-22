@@ -30,7 +30,7 @@ const DEFAULT_WEBHOOK_URL = 'https://n8n.arcanic.ai/webhook/akibacore';
 const FALLBACK_REPLY = 'Sorry, AkibaCore support is temporarily unavailable. Please try again in a moment.';
 
 function optionalString(value: unknown) {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== 'string') {return undefined;}
   const trimmed = value.trim();
   return trimmed || undefined;
 }
@@ -41,7 +41,7 @@ function optionalNumber(value: unknown) {
 }
 
 function suggestionsFrom(value: unknown) {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {return [];}
   return value
     .map((item) => optionalString(item))
     .filter((item): item is string => Boolean(item))

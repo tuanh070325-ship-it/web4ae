@@ -1,15 +1,15 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { BarChart3, BookOpen, FileText, FolderTree, Menu, PenTool, Users, X } from "lucide-react";
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { BarChart3, BookOpen, FileText, FolderTree, Menu, PenTool, Users, X } from 'lucide-react';
 
 const navItems = [
-  { to: "/admin", label: "Dashboard", icon: BarChart3 },
-  { to: "/admin/products", label: "Products", icon: BookOpen },
-  { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/categories", label: "Categories", icon: FolderTree },
-  { to: "/admin/orders", label: "Orders", icon: FileText },
-  { to: "/admin/authors", label: "Authors", icon: PenTool },
+  { to: '/admin', label: 'Dashboard', icon: BarChart3 },
+  { to: '/admin/products', label: 'Products', icon: BookOpen },
+  { to: '/admin/users', label: 'Users', icon: Users },
+  { to: '/admin/categories', label: 'Categories', icon: FolderTree },
+  { to: '/admin/orders', label: 'Orders', icon: FileText },
+  { to: '/admin/authors', label: 'Authors', icon: PenTool },
 ];
 
 export function AdminLayout() {
@@ -40,10 +40,10 @@ export function AdminLayout() {
           <NavLink
             key={to}
             to={to}
-            end={to === "/admin"}
+            end={to === '/admin'}
             className={({ isActive }) =>
               `flex h-10 items-center gap-2 rounded px-3 text-sm font-bold transition-colors ${
-                isActive ? "bg-[#d33a3a] text-white" : "text-zinc-300 hover:bg-white/5 hover:text-white"
+                isActive ? 'bg-[#d33a3a] text-white' : 'text-zinc-300 hover:bg-white/5 hover:text-white'
               }`
             }
           >
@@ -76,7 +76,7 @@ export function AdminLayout() {
               initial={{ x: -260 }}
               animate={{ x: 0 }}
               exit={{ x: -260 }}
-              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 28 }}
               className="fixed inset-y-0 left-0 z-[60] w-[240px] border-r border-[#273037] bg-[#171d21] shadow-2xl lg:hidden"
             >
               {sidebarContent}

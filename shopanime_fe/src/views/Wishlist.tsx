@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Trash2 } from "lucide-react";
-import { apiDelete, apiGet, apiPost } from "../lib/api";
-import { formatUsd, getProductAuthor, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, getProductPath, hasProductDiscount } from "../lib/format";
-import type { ApiResponse, WishlistItem } from "../lib/types";
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
+import { apiDelete, apiGet, apiPost } from '../lib/api';
+import { formatUsd, getProductAuthor, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, getProductPath, hasProductDiscount } from '../lib/format';
+import type { ApiResponse, WishlistItem } from '../lib/types';
 
 export function Wishlist() {
   const [items, setItems] = useState<WishlistItem[]>([]);
@@ -14,10 +14,10 @@ export function Wishlist() {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiGet<ApiResponse<WishlistItem[]>>("/wishlist");
+      const response = await apiGet<ApiResponse<WishlistItem[]>>('/wishlist');
       setItems(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load wishlist");
+      setError(err instanceof Error ? err.message : 'Unable to load wishlist');
     } finally {
       setLoading(false);
     }
@@ -29,14 +29,14 @@ export function Wishlist() {
 
   const removeItem = async (productId: number) => {
     await apiDelete(`/wishlist/${productId}`);
-    window.dispatchEvent(new Event("akibacore:wishlist-updated"));
+    window.dispatchEvent(new Event('akibacore:wishlist-updated'));
     await loadWishlist();
   };
 
   const moveToCart = async (productId: number) => {
     await apiPost(`/wishlist/${productId}/move-to-cart`);
-    window.dispatchEvent(new Event("akibacore:cart-updated"));
-    window.dispatchEvent(new Event("akibacore:wishlist-updated"));
+    window.dispatchEvent(new Event('akibacore:cart-updated'));
+    window.dispatchEvent(new Event('akibacore:wishlist-updated'));
     await loadWishlist();
   };
 

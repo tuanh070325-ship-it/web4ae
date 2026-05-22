@@ -15,6 +15,10 @@ export class CommunityService {
   }
 
   async createPost(userId: string, content: string) {
+    const user = await this.db.one('SELECT id FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     const result = await this.db.execute('INSERT INTO posts (user_id, content) VALUES (?, ?)', [userId, content]);
     return result.insertId;
   }
@@ -43,6 +47,23 @@ export class CommunityService {
     const rating = Number(body.rating);
     if (!body.product_id || !Number.isInteger(rating) || rating < 1 || rating > 5) {
       throw new BadRequestException('Product and rating between 1 and 5 are required');
+    }
+
+    const user = await this.db.one('SELECT id FROM users WHERE id = ?', [body.user_id]);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const product = await this.db.one('SELECT id FROM products WHERE id = ?', [body.product_id]);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (body.order_id) {
+      const order = await this.db.one('SELECT id FROM orders WHERE id = ? AND user_id = ?', [body.order_id, body.user_id]);
+      if (!order) {
+        throw new NotFoundException('Order not found for this user');
+      }
     }
 
     const existing = await this.db.one('SELECT id FROM reviews WHERE user_id = ? AND product_id = ? AND order_id <=> ?', [

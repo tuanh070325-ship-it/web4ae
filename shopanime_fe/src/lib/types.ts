@@ -90,11 +90,11 @@ export interface Author {
 }
 
 export type OrderStatus =
-  | "PENDING"
-  | "PROCESSING"
-  | "SHIPPED"
-  | "COMPLETED"
-  | "CANCELLED"
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'COMPLETED'
+  | 'CANCELLED'
   | string;
 
 export interface Order {

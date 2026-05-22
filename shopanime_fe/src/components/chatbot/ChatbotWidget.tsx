@@ -1,14 +1,15 @@
-import { FormEvent, KeyboardEvent, useMemo, useRef, useState } from "react";
-import { Bot, Headphones, MessageCircle, Minus, Send, X } from "lucide-react";
-import { apiPost } from "../../lib/api";
-import type { ApiResponse } from "../../lib/types";
-import { useAuth } from "../auth/AuthProvider";
+import type { FormEvent, KeyboardEvent} from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { Bot, Headphones, MessageCircle, Minus, Send, X } from 'lucide-react';
+import { apiPost } from '../../lib/api';
+import type { ApiResponse } from '../../lib/types';
+import { useAuth } from '../auth/AuthProvider';
 
-const CHATBOT_SESSION_KEY = "akibacore.chatbotSessionId";
+const CHATBOT_SESSION_KEY = 'akibacore.chatbotSessionId';
 
 interface ChatMessage {
   id: string;
-  role: "assistant" | "user";
+  role: 'assistant' | 'user';
   content: string;
 }
 
@@ -19,15 +20,15 @@ interface ChatbotReply {
 }
 
 function createMessageId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function getChatbotSessionId() {
-  if (typeof window === "undefined") {
-    return "server-session";
+  if (typeof window === 'undefined') {
+    return 'server-session';
   }
 
   const existingSessionId = localStorage.getItem(CHATBOT_SESSION_KEY);
@@ -44,12 +45,12 @@ export function ChatbotWidget() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: "welcome",
-      role: "assistant",
-      content: "Xin chao, minh la AkibaCore AI Support. Minh co the ho tro ve san pham, don hang, gio hang va uu dai.",
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Xin chao, minh la AkibaCore AI Support. Minh co the ho tro ve san pham, don hang, gio hang va uu dai.',
     },
   ]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -66,28 +67,28 @@ export function ChatbotWidget() {
 
   const sendMessage = async (messageText: string) => {
     const trimmedMessage = messageText.trim();
-    if (!trimmedMessage || sending) return;
+    if (!trimmedMessage || sending) {return;}
 
-    setInput("");
+    setInput('');
     setError(null);
     setSuggestions([]);
     setSending(true);
     setMessages((current) => [
       ...current,
-      { id: createMessageId(), role: "user", content: trimmedMessage },
+      { id: createMessageId(), role: 'user', content: trimmedMessage },
     ]);
 
     try {
-      const response = await apiPost<ApiResponse<ChatbotReply>>("/chatbot/message", {
+      const response = await apiPost<ApiResponse<ChatbotReply>>('/chatbot/message', {
         message: trimmedMessage,
         sessionId,
         pageUrl: `${window.location.pathname}${window.location.search}`,
         user: user
           ? {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-            }
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          }
           : undefined,
       });
 
@@ -95,19 +96,19 @@ export function ChatbotWidget() {
         ...current,
         {
           id: createMessageId(),
-          role: "assistant",
+          role: 'assistant',
           content: response.data.reply,
         },
       ]);
       setSuggestions(response.data.suggestions || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Chatbot is temporarily unavailable");
+      setError(err instanceof Error ? err.message : 'Chatbot is temporarily unavailable');
       setMessages((current) => [
         ...current,
         {
           id: createMessageId(),
-          role: "assistant",
-          content: "Xin loi, AkibaCore AI Support hien chua phan hoi duoc. Ban vui long thu lai sau it phut.",
+          role: 'assistant',
+          content: 'Xin loi, AkibaCore AI Support hien chua phan hoi duoc. Ban vui long thu lai sau it phut.',
         },
       ]);
     } finally {
@@ -122,7 +123,7 @@ export function ChatbotWidget() {
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       void sendMessage(input);
     }
@@ -133,7 +134,7 @@ export function ChatbotWidget() {
       {open && (
         <section
           className={`mb-4 w-[calc(100vw-2rem)] max-w-[390px] overflow-hidden rounded-lg border border-[#2e333d] bg-[#111216] text-white shadow-[0_24px_80px_rgba(0,0,0,0.52)] transition-all sm:w-[390px] ${
-            minimized ? "h-[72px]" : "h-[min(620px,calc(100vh-8rem))]"
+            minimized ? 'h-[72px]' : 'h-[min(620px,calc(100vh-8rem))]'
           }`}
           aria-label="AkibaCore AI customer support chat"
         >
@@ -156,7 +157,7 @@ export function ChatbotWidget() {
                 type="button"
                 onClick={() => setMinimized((current) => !current)}
                 className="flex h-9 w-9 items-center justify-center rounded border border-[#2e333d] text-zinc-300 transition-colors hover:border-[#e63946] hover:text-white"
-                aria-label={minimized ? "Open chat panel" : "Minimize chat panel"}
+                aria-label={minimized ? 'Open chat panel' : 'Minimize chat panel'}
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -177,13 +178,13 @@ export function ChatbotWidget() {
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
                       className={`max-w-[82%] rounded-lg px-3.5 py-2.5 text-sm leading-6 ${
-                        message.role === "user"
-                          ? "bg-[#e63946] text-white"
-                          : "border border-[#2e333d] bg-[#1a1b22] text-zinc-100"
+                        message.role === 'user'
+                          ? 'bg-[#e63946] text-white'
+                          : 'border border-[#2e333d] bg-[#1a1b22] text-zinc-100'
                       }`}
                     >
                       {message.content}

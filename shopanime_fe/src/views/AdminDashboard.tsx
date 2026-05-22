@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Search, TrendingUp } from "lucide-react";
-import { apiGet } from "../lib/api";
-import { formatUsd, toNumber } from "../lib/format";
-import type { ApiResponse, Category, Order, PaginatedApiResponse, Product, User } from "../lib/types";
-import { AdminPage, AdminPanel, adminInputClass, adminPrimaryButtonClass, adminTdClass, adminThClass } from "../components/admin/AdminUI";
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, TrendingUp } from 'lucide-react';
+import { apiGet } from '../lib/api';
+import { formatUsd, toNumber } from '../lib/format';
+import type { ApiResponse, Category, Order, PaginatedApiResponse, Product, User } from '../lib/types';
+import { AdminPage, AdminPanel, adminInputClass, adminPrimaryButtonClass, adminTdClass, adminThClass } from '../components/admin/AdminUI';
 
 function formatDate(value?: string | null) {
-  if (!value) return "N/A";
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (!value) {return 'N/A';}
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function orderTotal(order: Order) {
@@ -17,16 +17,16 @@ function orderTotal(order: Order) {
 
 function statusClass(status: string) {
   const normalized = status.toUpperCase();
-  if (normalized === "COMPLETED" || normalized === "DELIVERED") {
-    return "border-emerald-500/40 bg-emerald-500 text-black";
+  if (normalized === 'COMPLETED' || normalized === 'DELIVERED') {
+    return 'border-emerald-500/40 bg-emerald-500 text-black';
   }
-  if (normalized === "PROCESSING" || normalized === "SHIPPED") {
-    return "border-yellow-400/40 bg-yellow-400 text-black";
+  if (normalized === 'PROCESSING' || normalized === 'SHIPPED') {
+    return 'border-yellow-400/40 bg-yellow-400 text-black';
   }
-  if (normalized === "CANCELLED" || normalized === "RETURNED") {
-    return "border-zinc-300/40 bg-zinc-300 text-black";
+  if (normalized === 'CANCELLED' || normalized === 'RETURNED') {
+    return 'border-zinc-300/40 bg-zinc-300 text-black';
   }
-  return "border-red-500/40 bg-red-500 text-white";
+  return 'border-red-500/40 bg-red-500 text-white';
 }
 
 export function AdminDashboard() {
@@ -35,17 +35,17 @@ export function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     void Promise.all([
-      apiGet<PaginatedApiResponse<Product[]>>("/products?limit=1").then((response) => {
+      apiGet<PaginatedApiResponse<Product[]>>('/products?limit=1').then((response) => {
         setProducts(response.data);
         setProductTotal(response.meta.total);
       }),
-      apiGet<ApiResponse<Order[]>>("/orders").then((response) => setOrders(response.data)),
-      apiGet<ApiResponse<User[]>>("/users").then((response) => setUsers(response.data)),
-      apiGet<ApiResponse<Category[]>>("/categories").then((response) => setCategories(response.data)),
+      apiGet<ApiResponse<Order[]>>('/orders').then((response) => setOrders(response.data)),
+      apiGet<ApiResponse<User[]>>('/users').then((response) => setUsers(response.data)),
+      apiGet<ApiResponse<Category[]>>('/categories').then((response) => setCategories(response.data)),
     ]);
   }, []);
 
@@ -57,7 +57,7 @@ export function AdminDashboard() {
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     const recentOrders = orders.slice(0, 8);
-    if (!keyword) return recentOrders;
+    if (!keyword) {return recentOrders;}
     return recentOrders.filter((order) =>
       [order.order_code, order.receiver_name, order.customer, order.status, order.id]
         .filter(Boolean)
@@ -66,10 +66,10 @@ export function AdminDashboard() {
   }, [orders, query]);
 
   const cards = [
-    { label: "Total Revenue", value: formatUsd(revenue), accent: true },
-    { label: "Total Orders", value: String(orders.length) },
-    { label: "Total Users", value: String(users.length) },
-    { label: "Total Products", value: String(productTotal || products.length || categories.length) },
+    { label: 'Total Revenue', value: formatUsd(revenue), accent: true },
+    { label: 'Total Orders', value: String(orders.length) },
+    { label: 'Total Users', value: String(users.length) },
+    { label: 'Total Products', value: String(productTotal || products.length || categories.length) },
   ];
 
   return (
@@ -118,7 +118,7 @@ export function AdminDashboard() {
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="text-zinc-200 hover:bg-white/[0.03]">
                   <td className={`${adminTdClass} font-mono`}>#{order.order_code || order.id}</td>
-                  <td className={adminTdClass}>{order.receiver_name || order.customer || "N/A"}</td>
+                  <td className={adminTdClass}>{order.receiver_name || order.customer || 'N/A'}</td>
                   <td className={adminTdClass}>{formatDate(order.created_at || order.date)}</td>
                   <td className={adminTdClass}>{formatUsd(orderTotal(order))}</td>
                   <td className={adminTdClass}>

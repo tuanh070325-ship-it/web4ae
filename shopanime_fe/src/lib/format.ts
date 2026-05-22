@@ -1,11 +1,11 @@
-import type { ApiNumber, Product } from "./types";
+import type { ApiNumber, Product } from './types';
 
 export function toNumber(value: ApiNumber | null | undefined, fallback = 0): number {
-  if (value === null || value === undefined || value === "") {
+  if (value === null || value === undefined || value === '') {
     return fallback;
   }
 
-  const numericValue = typeof value === "number" ? value : Number(value);
+  const numericValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
@@ -93,15 +93,15 @@ export function hasProductShippingDiscount(product: Product): boolean {
 }
 
 export function formatShippingFee(value: ApiNumber | null | undefined): string {
-  return toNumber(value) <= 0 ? "Freeship" : formatUsd(value);
+  return toNumber(value) <= 0 ? 'Freeship' : formatUsd(value);
 }
 
 export function getProductImage(product: Product): string {
-  return product.image || product.image_url || "";
+  return product.image || product.image_url || '';
 }
 
 export function getProductAuthor(product: Product): string {
-  return product.author || product.author_name || "Unknown author";
+  return product.author || product.author_name || 'Unknown author';
 }
 
 export function getProductPath(product: Product): string {

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Body, Param, UseGuards, ForbiddenException, BadRequestException, NotFoundException, Inject } from '@nestjs/common';
 import { OrdersService } from './orders.service.js';
-import { AuthGuard, AdminGuard, CurrentUser, RequestUser } from '../db/auth.guard.js';
+import type { RequestUser } from '../db/auth.guard.js';
+import { AuthGuard, AdminGuard, CurrentUser } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
 
 @Controller('orders')
@@ -41,7 +42,7 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   async getOrderDetails(@Param('id') id: string, @CurrentUser() user: RequestUser) {
     const orderDetails = await this.ordersService.getOrderDetails(id);
-    if (!orderDetails) throw new NotFoundException('Order not found');
+    if (!orderDetails) {throw new NotFoundException('Order not found');}
     
     if (user.id !== parseInt(orderDetails.user_id) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden');
