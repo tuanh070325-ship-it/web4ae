@@ -30,9 +30,12 @@ Backend values live in `shopanime_be/.env`.
 | `N8N_CHATBOT_WEBHOOK_URL` | No | n8n webhook used by chatbot proxy |
 | `N8N_CHATBOT_TIMEOUT_MS` | No | Chatbot webhook timeout |
 | `KEY_GEMINI` | No | Gemini API key for admin product description AI |
-| `GEMINI_MODEL` | No | Gemini model, default `gemini-3-flash-preview` |
+| `GEMINI_MODEL` | No | Gemini model, default `gemini-3.1-pro-preview` |
+| `GEMINI_FALLBACK_MODELS` | No | Comma-separated fallback models. Leave empty to disable fallback |
 | `GEMINI_MAX_OUTPUT_TOKENS` | No | Product AI max output tokens, default `5000` |
 | `GEMINI_TIMEOUT_MS` | No | Gemini request timeout |
+
+Gemini quota errors are account/model limits, not application bugs. If `GEMINI_MODEL=gemini-3.1-pro-preview` returns a quota or billing error, enable the model in Google AI billing/rate limits or set `GEMINI_FALLBACK_MODELS` to another model available to the same API key.
 
 Recommended local database flags:
 

@@ -44,7 +44,8 @@ interface GeminiErrorResponse {
   };
 }
 
-const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.1-pro-preview';
+const DEFAULT_GEMINI_FALLBACK_MODELS: string[] = [];
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MIN_DESCRIPTION_LENGTH = 500;
 const MAX_DESCRIPTION_LENGTH = 700;
@@ -52,6 +53,15 @@ const MAX_LENGTH_RETRY_COUNT = 3;
 const GEMINI_MODEL_ALIASES: Record<string, string> = {
   'gemini-3.1-flash': 'gemini-3-flash-preview',
 };
+
+class RetryableGeminiModelError extends Error {
+  constructor(
+    readonly model: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 function optionalString(value: unknown) {
   if (typeof value !== 'string') {return undefined;}
@@ -197,6 +207,20 @@ function normalizeGeminiModel(value: string) {
   return GEMINI_MODEL_ALIASES[model] || model;
 }
 
+function uniqueModels(models: string[]) {
+  return [...new Set(models.map(normalizeGeminiModel).filter(Boolean))];
+}
+
+function configuredGeminiModels() {
+  const primaryModel = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+  const fallbackModels = (process.env.GEMINI_FALLBACK_MODELS || DEFAULT_GEMINI_FALLBACK_MODELS.join(','))
+    .split(',')
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  return uniqueModels([primaryModel, ...fallbackModels]);
+}
+
 function parseGeminiErrorBody(value: string) {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
@@ -208,6 +232,27 @@ function parseGeminiErrorBody(value: string) {
   } catch {
     return trimmedValue;
   }
+}
+
+function isRetryableGeminiError(status: number, message: string | undefined) {
+  const normalizedMessage = (message || '').toLowerCase();
+  if (isQuotaExceededGeminiError(normalizedMessage)) {
+    return false;
+  }
+
+  return status === 429
+    || status === 503
+    || normalizedMessage.includes('high demand')
+    || normalizedMessage.includes('overloaded')
+    || normalizedMessage.includes('temporarily unavailable')
+    || normalizedMessage.includes('try again later');
+}
+
+function isQuotaExceededGeminiError(message: string | undefined) {
+  const normalizedMessage = (message || '').toLowerCase();
+  return normalizedMessage.includes('quota exceeded')
+    || normalizedMessage.includes('exceeded your current quota')
+    || normalizedMessage.includes('check your plan and billing');
 }
 
 @Injectable()
@@ -252,12 +297,41 @@ export class ProductAiService {
     temperature: number;
     lengthRetryCount?: number;
   }): Promise<string> {
+    const models = configuredGeminiModels();
+    const failures: string[] = [];
+
+    for (const model of models) {
+      try {
+        return await this.callGeminiModel({ ...input, model });
+      } catch (error) {
+        if (error instanceof RetryableGeminiModelError) {
+          failures.push(`${error.model}: ${error.message}`);
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new ServiceUnavailableException(
+      failures.length > 0
+        ? `Gemini models are temporarily unavailable: ${failures.join(' | ')}`
+        : 'Gemini service is temporarily unavailable',
+    );
+  }
+
+  private async callGeminiModel(input: {
+    systemPrompt: string;
+    userPrompt: string;
+    temperature: number;
+    model: string;
+    lengthRetryCount?: number;
+  }): Promise<string> {
     const apiKey = process.env.KEY_GEMINI || process.env.key_gemini;
     if (!apiKey) {
       throw new ServiceUnavailableException('Gemini API key is not configured');
     }
 
-    const model = normalizeGeminiModel(process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL);
+    const model = normalizeGeminiModel(input.model);
     const maxOutputTokens = Math.max(1, Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 5000));
     const timeoutMs = Math.max(1000, Number(process.env.GEMINI_TIMEOUT_MS || 30000));
     const abortController = new AbortController();
@@ -291,12 +365,21 @@ export class ProductAiService {
 
       if (!response.ok) {
         const upstreamMessage = parseGeminiErrorBody(await response.text());
+        const message = upstreamMessage
+          ? `Gemini service returned an error for model "${model}": ${upstreamMessage}`
+          : `Gemini service returned an error for model "${model}": HTTP ${response.status}`;
 
-        throw new ServiceUnavailableException(
-          upstreamMessage
-            ? `Gemini service returned an error for model "${model}": ${upstreamMessage}`
-            : `Gemini service returned an error: HTTP ${response.status}`,
-        );
+        if (isQuotaExceededGeminiError(upstreamMessage)) {
+          throw new ServiceUnavailableException(
+            `Gemini quota exceeded for model "${model}". Check Google AI billing/rate limits or configure GEMINI_FALLBACK_MODELS with an available model.`,
+          );
+        }
+
+        if (isRetryableGeminiError(response.status, upstreamMessage)) {
+          throw new RetryableGeminiModelError(model, upstreamMessage || `HTTP ${response.status}`);
+        }
+
+        throw new ServiceUnavailableException(message);
       }
 
       const payload = (await response.json()) as GeminiResponse;
@@ -320,7 +403,7 @@ export class ProductAiService {
 
       const lengthRetryCount = input.lengthRetryCount || 0;
       if (lengthRetryCount < MAX_LENGTH_RETRY_COUNT) {
-        return this.callGemini({
+        return this.callGeminiModel({
           ...input,
           lengthRetryCount: lengthRetryCount + 1,
           userPrompt: buildLengthRetryPrompt({
@@ -341,7 +424,11 @@ export class ProductAiService {
         `Gemini returned a description outside the required ${MIN_DESCRIPTION_LENGTH}-${MAX_DESCRIPTION_LENGTH} character range`,
       );
     } catch (error) {
-      if (error instanceof ServiceUnavailableException || error instanceof BadRequestException) {
+      if (
+        error instanceof RetryableGeminiModelError
+        || error instanceof ServiceUnavailableException
+        || error instanceof BadRequestException
+      ) {
         throw error;
       }
       throw new ServiceUnavailableException('Unable to generate product description');
