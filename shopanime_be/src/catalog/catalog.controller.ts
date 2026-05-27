@@ -8,6 +8,7 @@ export class CatalogController {
   constructor(@Inject(CatalogService) private readonly catalogService: CatalogService) {
     bindControllerMethods(this, [
       'getProducts',
+      'getAdminProducts',
       'getProduct',
       'createProduct',
       'updateProduct',
@@ -28,6 +29,12 @@ export class CatalogController {
     return this.catalogService.getProducts(query);
   }
 
+
+  @Get('admin/products')
+  @UseGuards(AuthGuard, AdminGuard)
+  async getAdminProducts(@Query() query: Record<string, string | string[] | undefined>) {
+    return this.catalogService.getProducts(query, { includeInactive: true });
+  }
   @Get('products/:slug')
   async getProduct(@Param('slug') slug: string) {
     return { data: await this.catalogService.getProduct(slug) };

@@ -73,6 +73,34 @@ async function apiRequest<T = unknown>(path: string, init: ApiRequestOptions = {
   return response.json() as Promise<T>;
 }
 
+async function apiFormRequest<T = unknown>(path: string, formData: FormData, init: ApiRequestOptions = {}): Promise<T> {
+  const token = getAuthToken();
+  const headers = new Headers(init.headers);
+  const { suppressUnauthorizedEvent, ...requestInit } = init;
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(apiUrl(path), { ...requestInit, method: 'POST', body: formData, headers });
+  if (!response.ok) {
+    let message = `API request failed: ${response.status}`;
+    try {
+      const errorBody = await response.json();
+      message = Array.isArray(errorBody.message) ? errorBody.message.join(', ') : errorBody.message || message;
+    } catch {
+      // Keep default message when the server does not return JSON.
+    }
+    if (response.status === 401) {
+      clearAuthToken();
+      if (!suppressUnauthorizedEvent && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('akibacore:unauthorized'));
+      }
+    }
+    throw new ApiError(message, response.status);
+  }
+  return response.json() as Promise<T>;
+}
+
 export function apiGet<T = unknown>(path: string, init: ApiRequestOptions = {}): Promise<T> {
   return apiRequest<T>(path, init);
 }
@@ -95,4 +123,8 @@ export function apiPut<T = unknown>(path: string, body?: unknown, init: ApiReque
 
 export function apiDelete<T = unknown>(path: string, init: ApiRequestOptions = {}): Promise<T> {
   return apiRequest<T>(path, { ...init, method: 'DELETE' });
+}
+
+export function apiPostForm<T = unknown>(path: string, formData: FormData, init: ApiRequestOptions = {}): Promise<T> {
+  return apiFormRequest<T>(path, formData, init);
 }

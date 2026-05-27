@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from '../../lib/format';
+import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount, useProductPlaceholderImage } from '../../lib/format';
 import type { CartItem, Product } from '../../lib/types';
 
 interface BuyNowCheckoutItem extends Product {
@@ -29,7 +29,7 @@ export const OrderSummary = memo(function OrderSummary({ items, error, submittin
           {items.map((item) => (
             <div key={item.cart_item_id} className="flex items-center gap-4">
               <div className="w-14 h-16 bg-white rounded overflow-hidden flex items-center justify-center">
-                <img src={getProductImage(item)} alt={item.name} className="object-contain w-full h-full p-1" />
+                <img src={getProductImage(item)} onError={useProductPlaceholderImage} alt={item.name} className="object-contain w-full h-full p-1" />
               </div>
               <div className="flex-1">
                 <span className="text-sm text-white line-clamp-1">{item.name}</span>

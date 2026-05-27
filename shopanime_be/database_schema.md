@@ -32,6 +32,7 @@ Runtime schema is defined in `src/db/schema.ts`. The backend creates missing obj
 | `reviews` | Product reviews | FK `user_id`, `product_id`, `order_id`; rating check `1..5` |
 | `posts` | Community posts | FK `user_id -> users.id` |
 | `post_comments` | Post comments and replies | FK `post_id`, `user_id`, self FK `parent_id` |
+| `post_likes` | Per-user post likes | Unique `(post_id, user_id)`, FK to `posts` and `users` |
 | `banners` | Homepage/shop banners | Primary key `id` |
 
 ## Seed Data
@@ -91,7 +92,7 @@ Startup schema sync ensures indexes for common reads:
 - Product listing/filtering: status, created time, price, category, author
 - Orders: user, status, created time, order code
 - Reviews: product, status, order
-- Posts/comments: user, status, parent thread
+- Posts/comments/likes: user, status, parent thread, liked user
 - Inventory history: product and created time
 
 ## Reset Local Development Data

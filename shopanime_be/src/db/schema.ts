@@ -10,6 +10,7 @@ const DEMO_PASSWORD_HASH = 'base64:c2NyeXB0OmIyNTk2MWVhMDNhZDZkMmRlNzU1ZjQ4ZmM0Z
 
 const tables = [
   'app_seed_runs',
+  'post_likes',
   'post_comments',
   'posts',
   'reviews',
@@ -305,6 +306,16 @@ const schemaStatements = [
     CONSTRAINT fk_post_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  `CREATE TABLE IF NOT EXISTS post_likes (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    post_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_post_likes_post_user (post_id, user_id),
+    CONSTRAINT fk_post_likes_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_post_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS banners (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     image_url TEXT NULL,
@@ -337,6 +348,7 @@ const indexDefinitions = [
   { table: 'reviews', name: 'idx_reviews_order', columns: 'order_id' },
   { table: 'posts', name: 'idx_posts_user_status_created', columns: 'user_id, status, created_at' },
   { table: 'post_comments', name: 'idx_post_comments_post_parent', columns: 'post_id, parent_id' },
+  { table: 'post_likes', name: 'idx_post_likes_user_created', columns: 'user_id, created_at' },
   { table: 'inventory_transactions', name: 'idx_inventory_product_created', columns: 'product_id, created_at' },
 ];
 

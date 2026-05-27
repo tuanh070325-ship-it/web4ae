@@ -1,5 +1,17 @@
 import type { ApiNumber, Product } from './types';
 
+const PRODUCT_PLACEHOLDER_SVG = encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="720" viewBox="0 0 480 720">
+  <rect width="480" height="720" fill="#101417"/>
+  <rect x="42" y="42" width="396" height="636" rx="18" fill="#171d21" stroke="#343d43" stroke-width="4"/>
+  <path d="M120 222h240M120 278h176M120 334h214" stroke="#e63946" stroke-width="18" stroke-linecap="round"/>
+  <text x="240" y="480" text-anchor="middle" fill="#a0a5b1" font-family="Arial" font-size="34" font-weight="700">AkibaCore</text>
+  <text x="240" y="524" text-anchor="middle" fill="#5e6677" font-family="Arial" font-size="22">No image</text>
+</svg>
+`.trim());
+
+export const PRODUCT_PLACEHOLDER_IMAGE = `data:image/svg+xml;charset=utf-8,${PRODUCT_PLACEHOLDER_SVG}`;
+
 export function toNumber(value: ApiNumber | null | undefined, fallback = 0): number {
   if (value === null || value === undefined || value === '') {
     return fallback;
@@ -97,7 +109,13 @@ export function formatShippingFee(value: ApiNumber | null | undefined): string {
 }
 
 export function getProductImage(product: Product): string {
-  return product.image || product.image_url || '';
+  return product.image || product.image_url || PRODUCT_PLACEHOLDER_IMAGE;
+}
+
+export function useProductPlaceholderImage(event: { currentTarget: HTMLImageElement }) {
+  if (event.currentTarget.src !== PRODUCT_PLACEHOLDER_IMAGE) {
+    event.currentTarget.src = PRODUCT_PLACEHOLDER_IMAGE;
+  }
 }
 
 export function getProductAuthor(product: Product): string {

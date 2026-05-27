@@ -6,7 +6,7 @@ import { Heart, LayoutDashboard, LogOut, Menu, Search, ShoppingCart, User, X } f
 import { useAuth } from '../auth/AuthProvider';
 import { PromoMarquee } from './PromoMarquee';
 import { apiGet } from '../../lib/api';
-import { formatUsd, getProductFinalPrice, getProductImage, getProductPath } from '../../lib/format';
+import { formatUsd, getProductFinalPrice, getProductImage, getProductPath, useProductPlaceholderImage } from '../../lib/format';
 import type { ApiResponse, CartItem, WishlistItem } from '../../lib/types';
 import logoIcon from '../../../img/logo.png';
 
@@ -130,7 +130,7 @@ export function Navbar() {
             {visibleItems.map((item) => (
               <Link key={`${type}-${'cart_item_id' in item ? item.cart_item_id : item.wishlist_item_id}`} to={getProductPath(item)} className="grid grid-cols-[48px_minmax(0,1fr)] gap-3 rounded-lg p-2 transition-colors hover:bg-white/[0.04]">
                 <div className="flex h-16 w-12 items-center justify-center overflow-hidden rounded bg-white p-1">
-                  <img src={getProductImage(item)} alt={item.name} className="max-h-full max-w-full object-contain" />
+                  <img src={getProductImage(item)} onError={useProductPlaceholderImage} alt={item.name} className="max-h-full max-w-full object-contain" />
                 </div>
                 <div className="min-w-0">
                   <div className="line-clamp-2 text-sm font-bold leading-5 text-white">{item.name}</div>

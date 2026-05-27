@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { apiGet } from '../lib/api';
-import { getProductAuthor, getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount } from '../lib/format';
+import { getProductAuthor, getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount, useProductPlaceholderImage } from '../lib/format';
 import type { PaginatedApiResponse, PaginationMeta, Product } from '../lib/types';
 import { Pagination } from '../components/ui/Pagination';
 import { ProductDealPrice } from '../components/ui/ProductDealPrice';
@@ -197,6 +197,7 @@ export function Home() {
                   >
                     <img 
                       src={getProductImage(product)}
+                      onError={useProductPlaceholderImage}
                       alt={product.name}
                       className="w-full h-full object-cover"
                     />

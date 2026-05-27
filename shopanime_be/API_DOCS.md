@@ -295,6 +295,50 @@ curl -X POST http://localhost:4000/api/posts/1/like \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
+The like endpoint toggles the current user's like and returns the updated state:
+
+```json
+{
+  "success": true,
+  "data": {
+    "liked": true,
+    "like_count": 12
+  }
+}
+```
+
+Create post comment:
+
+```bash
+curl -X POST http://localhost:4000/api/posts/1/comments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"content":"Great haul."}'
+```
+
+Update own post comment:
+
+```bash
+curl -X PUT http://localhost:4000/api/posts/1/comments/7 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"content":"Updated comment."}'
+```
+
+Hide a comment as admin:
+
+```bash
+curl -X PUT http://localhost:4000/api/posts/1/comments/7/hide \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Delete own post comment:
+
+```bash
+curl -X DELETE http://localhost:4000/api/posts/1/comments/7 \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
 Get reviews:
 
 ```bash

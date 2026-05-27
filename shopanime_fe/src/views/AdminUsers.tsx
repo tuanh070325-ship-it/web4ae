@@ -47,11 +47,11 @@ export function AdminUsers() {
     const payload = {
       username: form.username,
       email: form.email,
-      password: form.password,
       full_name: form.full_name,
       phone: form.phone || null,
       role: form.role,
       status: form.status,
+      ...(form.id && !form.password.trim() ? {} : { password: form.password }),
     };
     if (form.id) {
       await apiPut(`/users/${form.id}`, payload);
@@ -90,24 +90,22 @@ export function AdminUsers() {
     <AdminPage title="Users" description="Create, update and remove user accounts." message={message}>
 
       <form onSubmit={submit} className={`${adminFormClass} md:grid-cols-7`}>
-        <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} placeholder="Username" disabled={Boolean(form.id)} className={adminInputClass} />
-        <input required value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder="Email" disabled={Boolean(form.id)} className={adminInputClass} />
-        {!form.id && (
-          <div className="md:col-span-1">
-            <input
-              required
-              type="password"
-              value={form.password}
-              onChange={(event) => updateField('password', event.target.value)}
-              placeholder="Password"
-              autoComplete="new-password"
-              className={adminInputClass}
-            />
-            <p className="mt-2 text-[11px] font-semibold text-zinc-500">
-              Stored as Base64-wrapped scrypt hash.
-            </p>
-          </div>
-        )}
+        <input required value={form.username} onChange={(event) => updateField('username', event.target.value)} placeholder="Username" className={adminInputClass} />
+        <input required value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder="Email" className={adminInputClass} />
+        <div className="md:col-span-1">
+          <input
+            required={!form.id}
+            type="password"
+            value={form.password}
+            onChange={(event) => updateField('password', event.target.value)}
+            placeholder={form.id ? 'New password' : 'Password'}
+            autoComplete="new-password"
+            className={adminInputClass}
+          />
+          <p className="mt-2 text-[11px] font-semibold text-zinc-500">
+            Stored as Base64-wrapped scrypt hash.
+          </p>
+        </div>
         <input value={form.full_name} onChange={(event) => updateField('full_name', event.target.value)} placeholder="Full name" className={adminInputClass} />
         <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} placeholder="Phone" className={adminInputClass} />
         <select value={form.role} onChange={(event) => updateField('role', event.target.value)} className={adminInputClass}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { apiDelete, apiGet, apiPost } from '../lib/api';
-import { formatUsd, getProductAuthor, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, getProductPath, hasProductDiscount } from '../lib/format';
+import { formatUsd, getProductAuthor, getProductDiscountPercent, getProductFinalPrice, getProductImage, getProductOriginalPrice, getProductPath, hasProductDiscount, useProductPlaceholderImage } from '../lib/format';
 import type { ApiResponse, WishlistItem } from '../lib/types';
 
 export function Wishlist() {
@@ -70,7 +70,7 @@ export function Wishlist() {
           {items.map((item) => (
             <div key={item.wishlist_item_id} className="flex items-center gap-6 pb-8 border-zinc-800">
               <Link to={getProductPath(item)} className="w-28 h-40 flex-shrink-0 bg-white/5 rounded-md overflow-hidden border border-zinc-800">
-                <img src={getProductImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                <img src={getProductImage(item)} onError={useProductPlaceholderImage} alt={item.name} className="w-full h-full object-cover" />
               </Link>
 
               <div className="flex flex-col flex-1 h-full py-1">

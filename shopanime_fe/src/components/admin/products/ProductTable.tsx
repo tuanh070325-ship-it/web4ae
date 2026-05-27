@@ -11,6 +11,7 @@ import {
   getProductShippingDiscountPercent,
   getProductShippingFee,
   hasProductDiscount,
+  useProductPlaceholderImage,
 } from '../../../lib/format';
 import type { Product } from '../../../lib/types';
 import {
@@ -47,7 +48,7 @@ export const ProductTable = memo(function ProductTable({ products, onEdit, onDel
               <td className={adminTdClass}>
                 <div className="flex items-center gap-3">
                   <div className="flex h-14 w-11 items-center justify-center overflow-hidden rounded bg-white p-1">
-                    <img src={getProductImage(product)} alt={product.name} className="max-h-full max-w-full object-contain" />
+                    <img src={getProductImage(product)} onError={useProductPlaceholderImage} alt={product.name} className="max-h-full max-w-full object-contain" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">{product.name}</div>
@@ -55,7 +56,16 @@ export const ProductTable = memo(function ProductTable({ products, onEdit, onDel
                   </div>
                 </div>
               </td>
-              <td className={adminTdClass}>{product.category_name || 'N/A'}</td>
+                            <td className={adminTdClass}>
+                <div className="max-w-52">
+                  <div className="font-semibold text-white">{product.category_name || 'N/A'}</div>
+                  {product.category_names && product.category_names.length > 1 && (
+                    <div className="mt-1 line-clamp-2 text-xs text-zinc-500">
+                      {product.category_names.filter((categoryName) => categoryName !== product.category_name).join(', ')}
+                    </div>
+                  )}
+                </div>
+              </td>
               <td className={adminTdClass}>{product.author_name || product.author || 'N/A'}</td>
               <td className={`${adminTdClass} text-white`}>
                 <div className="font-semibold">{formatUsd(getProductFinalPrice(product))}</div>

@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Box, CalendarDays, Check, ChevronRight, Heart, PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Sparkles, Star, Truck, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { apiGet, apiPost } from '../lib/api';
-import { formatShippingFee, formatUsd, getProductAuthor, getProductDiscountAmount, getProductDiscountPercent, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountPercent, getProductShippingFee, hasProductDiscount, toNumber } from '../lib/format';
+import { formatShippingFee, formatUsd, getProductAuthor, getProductDiscountAmount, getProductDiscountPercent, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountPercent, getProductShippingFee, hasProductDiscount, toNumber, useProductPlaceholderImage } from '../lib/format';
 import type { ApiMutationResponse, ApiResponse, Product, Review } from '../lib/types';
 import { useAuth } from '../components/auth/AuthProvider';
 
@@ -163,7 +163,7 @@ export function ProductDetail() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-black text-white">
       <div className="pointer-events-none absolute inset-0">
-        <img src={getProductImage(product)} alt="" className="h-full w-full scale-110 object-cover opacity-10 blur-2xl" />
+        <img src={getProductImage(product)} onError={useProductPlaceholderImage} alt="" className="h-full w-full scale-110 object-cover opacity-10 blur-2xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(230,57,70,0.35),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(94,165,200,0.2),transparent_28%),linear-gradient(180deg,rgba(0,0,0,0.55),#000_72%)]" />
       </div>
 
@@ -189,7 +189,7 @@ export function ProductDetail() {
               transition={{ type: 'spring', stiffness: 280, damping: 20 }}
               className="relative aspect-[4/5] overflow-hidden rounded border border-[#2e333d] bg-zinc-950 shadow-[16px_16px_0_0_rgba(230,57,70,0.95),0_40px_90px_rgba(0,0,0,0.65)] transform-gpu"
             >
-              <img src={getProductImage(product)} alt={product.name} className="h-full w-full object-cover" />
+              <img src={getProductImage(product)} onError={useProductPlaceholderImage} alt={product.name} className="h-full w-full object-cover" />
               <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/20 to-transparent" />
               {isDiscounted && (
                 <div className="absolute right-4 top-4 bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white shadow-[4px_4px_0_0_rgba(0,0,0,0.7)]">
@@ -201,7 +201,7 @@ export function ProductDetail() {
             <div className="mt-6 grid grid-cols-5 gap-3">
               {[0, 1, 2, 3].map((index) => (
                 <div key={index} className={`aspect-square overflow-hidden rounded border bg-white/5 ${index === 0 ? 'border-[#e63946] shadow-[0_0_18px_rgba(230,57,70,0.35)]' : 'border-[#2e333d] opacity-55'}`}>
-                  <img src={getProductImage(product)} alt="" className={`h-full w-full object-cover ${index === 0 ? '' : 'grayscale'}`} />
+                  <img src={getProductImage(product)} onError={useProductPlaceholderImage} alt="" className={`h-full w-full object-cover ${index === 0 ? '' : 'grayscale'}`} />
                 </div>
               ))}
               <div className="flex aspect-square items-center justify-center rounded border border-[#2e333d] bg-white/[0.04] text-sm font-black text-white">+12</div>

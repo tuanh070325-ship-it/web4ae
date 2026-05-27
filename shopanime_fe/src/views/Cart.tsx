@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { apiDelete, apiGet, apiPut } from '../lib/api';
-import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount } from '../lib/format';
+import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount, useProductPlaceholderImage } from '../lib/format';
 import type { ApiResponse, CartItem } from '../lib/types';
 
 const VAT_RATE = 0.1;
@@ -107,7 +107,7 @@ export function Cart() {
                 {items.map((item) => (
                   <div key={item.cart_item_id} className="grid md:grid-cols-[100px_1fr_120px_120px_50px] gap-6 items-center border-b border-zinc-200 pb-6">
                     <div className="w-24 h-32 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                      <img src={getProductImage(item)} alt={item.name} className="max-w-full max-h-full object-contain" />
+                      <img src={getProductImage(item)} onError={useProductPlaceholderImage} alt={item.name} className="max-w-full max-h-full object-contain" />
                     </div>
 
                     <div className="flex-1 pr-6">

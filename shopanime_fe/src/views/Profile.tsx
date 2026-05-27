@@ -1,19 +1,24 @@
-import type { FormEvent} from 'react';
-import { useEffect, useState } from 'react';
+import type { ChangeEvent, FormEvent} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, ShoppingBag, Heart, Settings } from 'lucide-react';
+import { Heart, Pencil, Settings, ShoppingBag, Trash2, User } from 'lucide-react';
 import { apiPut } from '../lib/api';
 import { useAuth } from '../components/auth/AuthProvider';
+import { fileToAvatarDataUrl, getUserAvatar } from '../lib/avatar';
 
 export function Profile() {
   const { user, refreshMe } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     full_name: '',
     email: '',
     username: '',
     phone: '',
+    avatar_url: '',
   });
   const [message, setMessage] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -22,9 +27,41 @@ export function Profile() {
         email: user.email,
         username: user.username,
         phone: user.phone || '',
+        avatar_url: user.avatar_url || '',
       });
     }
   }, [user]);
+
+  const saveAvatar = async (avatarUrl: string) => {
+    if (!user) {return;}
+    setAvatarSaving(true);
+    setAvatarError(null);
+    try {
+      await apiPut(`/users/${user.id}`, { avatar_url: avatarUrl || null });
+      setForm((current) => ({ ...current, avatar_url: avatarUrl }));
+      await refreshMe();
+      setMessage(avatarUrl ? 'Avatar updated' : 'Avatar reset to system default');
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Unable to update avatar');
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
+
+  const uploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {return;}
+    setAvatarSaving(true);
+    setAvatarError(null);
+    try {
+      const avatarUrl = await fileToAvatarDataUrl(file);
+      await saveAvatar(avatarUrl);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Unable to process avatar');
+      setAvatarSaving(false);
+    }
+  };
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -32,6 +69,7 @@ export function Profile() {
     await apiPut(`/users/${user.id}`, {
       full_name: form.full_name,
       phone: form.phone,
+      avatar_url: form.avatar_url || null,
     });
     await refreshMe();
     setMessage('Profile updated');
@@ -61,17 +99,42 @@ export function Profile() {
         {/* Profile Header */}
         <div className="px-10 pb-10 relative">
           <div className="flex items-end gap-6 -mt-16 mb-10 relative z-10">
-            <div className="w-32 h-32 rounded-full border-4 border-[#141518] overflow-hidden shadow-[0_0_20px_rgba(230,57,70,0.5)] relative">
+            <div className="group relative h-32 w-32 overflow-hidden rounded-full border-4 border-[#141518] shadow-[0_0_20px_rgba(230,57,70,0.5)]">
               <div className="absolute inset-0 border-2 border-red-500 rounded-full z-10 pointer-events-none"></div>
               <img 
-                src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200&auto=format&fit=crop" 
+                src={getUserAvatar({ avatar_url: form.avatar_url })}
                 alt="Avatar" 
                 className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarSaving}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Upload avatar"
+                  title="Upload avatar"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveAvatar('')}
+                  disabled={avatarSaving || !form.avatar_url.trim()}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#b0222e] text-white transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-45"
+                  aria-label="Remove avatar"
+                  title="Remove avatar"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <input ref={fileInputRef} onChange={uploadAvatar} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" />
             </div>
             <div className="pb-4">
               <h1 className="text-3xl font-bold text-white">{user?.full_name || user?.username || 'AkibaCore'}</h1>
               <p className="text-[#a0a5b1]">{user?.email}</p>
+              {avatarSaving && <p className="mt-2 text-xs font-semibold text-[#ff8aa0]">Processing avatar...</p>}
+              {avatarError && <p className="mt-2 max-w-md text-xs font-semibold text-red-300">{avatarError}</p>}
             </div>
           </div>
 

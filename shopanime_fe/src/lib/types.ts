@@ -26,6 +26,8 @@ export type ApiNumber = number | string;
 export interface Product {
   id: number;
   category_id: number | null;
+  category_ids?: number[];
+  secondary_category_ids?: number[];
   author_id?: number | null;
   publisher_id?: number | null;
   series_id?: number | null;
@@ -54,6 +56,7 @@ export interface Product {
   publisher_name?: string | null;
   category_name?: string | null;
   category_slug?: string | null;
+  category_names?: string[];
   series_name?: string | null;
   series_slug?: string | null;
   series_status?: string | null;
@@ -117,6 +120,9 @@ export interface Order {
   final_amount?: ApiNumber | null;
   total_amount?: ApiNumber | null;
   total?: ApiNumber | null;
+  order_items_count?: ApiNumber | null;
+  order_product_count?: ApiNumber | null;
+  order_preview_items?: OrderItem[];
   status: OrderStatus;
 }
 
@@ -185,7 +191,22 @@ export interface Post {
   status: string;
   like_count: number;
   comment_count: number;
+  liked_by_me?: boolean | 0 | 1;
+  comments?: PostComment[];
   created_at: string;
+}
+
+export interface PostComment {
+  id: number;
+  post_id: number;
+  user_id: number;
+  parent_id: number | null;
+  username: string;
+  avatar_url: string | null;
+  content: string | null;
+  status: string;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 export interface Review {

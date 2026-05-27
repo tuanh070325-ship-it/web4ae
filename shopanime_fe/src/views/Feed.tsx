@@ -1,12 +1,18 @@
 import type { FormEvent} from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../lib/api';
-import type { ApiResponse, Post } from '../lib/types';
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api';
+import type { ApiMutationResponse, ApiResponse, Post, PostComment } from '../lib/types';
 import { useAuth } from '../components/auth/AuthProvider';
 import { PostList } from '../components/feed/PostList';
 
+interface LikeResult {
+  liked: boolean;
+  like_count: number;
+}
+
 export function Feed() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
   const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,14 +36,75 @@ export function Feed() {
 
   const likePost = useCallback(async (id: number) => {
     if (!isAuthenticated) {return;}
-    setPosts((current) => current.map((post) => (post.id === id ? { ...post, like_count: Number(post.like_count || 0) + 1 } : post)));
     try {
-      await apiPost(`/posts/${id}/like`);
+      const response = await apiPost<ApiMutationResponse<LikeResult>>(`/posts/${id}/like`);
+      setPosts((current) => current.map((post) => (
+        post.id === id
+          ? {
+            ...post,
+            like_count: response.data?.like_count ?? post.like_count,
+            liked_by_me: response.data?.liked ?? post.liked_by_me,
+          }
+          : post
+      )));
     } catch (err) {
-      setPosts((current) => current.map((post) => (post.id === id ? { ...post, like_count: Math.max(0, Number(post.like_count || 0) - 1) } : post)));
       setError(err instanceof Error ? err.message : 'Unable to like post');
     }
   }, [isAuthenticated]);
+
+  const replaceComment = useCallback((postId: number, nextComment: PostComment, countDelta = 0) => {
+    setPosts((current) => current.map((post) => {
+      if (post.id !== postId) {return post;}
+      return {
+        ...post,
+        comment_count: Math.max(0, Number(post.comment_count || 0) + countDelta),
+        comments: (post.comments || []).map((comment) => (comment.id === nextComment.id ? nextComment : comment)),
+      };
+    }));
+  }, []);
+
+  const createComment = useCallback(async (postId: number, comment: string) => {
+    if (!isAuthenticated || !comment.trim()) {return;}
+    const response = await apiPost<ApiMutationResponse<PostComment>>(`/posts/${postId}/comments`, { content: comment });
+    if (!response.data) {return;}
+    setPosts((current) => current.map((post) => {
+      if (post.id !== postId) {return post;}
+      return {
+        ...post,
+        comment_count: Number(post.comment_count || 0) + 1,
+        comments: [...(post.comments || []), response.data],
+      };
+    }));
+  }, [isAuthenticated]);
+
+  const deleteComment = useCallback(async (postId: number, commentId: number) => {
+    if (!isAuthenticated) {return;}
+    await apiDelete(`/posts/${postId}/comments/${commentId}`);
+    setPosts((current) => current.map((post) => {
+      if (post.id !== postId) {return post;}
+      return {
+        ...post,
+        comment_count: Math.max(0, Number(post.comment_count || 0) - 1),
+        comments: (post.comments || []).filter((comment) => comment.id !== commentId),
+      };
+    }));
+  }, [isAuthenticated]);
+
+  const updateComment = useCallback(async (postId: number, commentId: number, comment: string) => {
+    if (!isAuthenticated || !comment.trim()) {return;}
+    const response = await apiPut<ApiMutationResponse<PostComment>>(`/posts/${postId}/comments/${commentId}`, { content: comment });
+    if (response.data) {
+      replaceComment(postId, response.data);
+    }
+  }, [isAuthenticated, replaceComment]);
+
+  const hideComment = useCallback(async (postId: number, commentId: number) => {
+    if (!isAdmin) {return;}
+    const response = await apiPut<ApiMutationResponse<PostComment>>(`/posts/${postId}/comments/${commentId}/hide`);
+    if (response.data) {
+      replaceComment(postId, response.data, -1);
+    }
+  }, [isAdmin, replaceComment]);
 
   return (
     <div className="w-full bg-[#111216] min-h-[calc(100vh-72px)] py-12 px-8 font-sans relative overflow-hidden text-[#a0a5b1]">
@@ -65,7 +132,17 @@ export function Feed() {
 
           {error && <div className="text-red-400">{error}</div>}
 
-          <PostList posts={posts} onLikePost={likePost} />
+          <PostList
+            posts={posts}
+            currentUserId={user?.id ?? null}
+            isAuthenticated={isAuthenticated}
+            isAdmin={isAdmin}
+            onLikePost={likePost}
+            onCreateComment={createComment}
+            onUpdateComment={updateComment}
+            onHideComment={hideComment}
+            onDeleteComment={deleteComment}
+          />
         </div>
 
         <div className="space-y-8 mt-[72px]">

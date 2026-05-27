@@ -15,12 +15,58 @@ function orderStatus(value: unknown) {
 export class OrdersService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
-  getAllOrders() {
-    return this.db.query('SELECT * FROM orders ORDER BY created_at DESC');
+  async getAllOrders() {
+    const orders = await this.db.query('SELECT * FROM orders ORDER BY created_at DESC');
+    return this.attachOrderPreviews(orders);
   }
 
-  getUserOrders(userId: string) {
-    return this.db.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+  async getUserOrders(userId: string) {
+    const orders = await this.db.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+    return this.attachOrderPreviews(orders);
+  }
+
+  private async attachOrderPreviews(orders: any[]) {
+    if (orders.length === 0) {
+      return orders;
+    }
+
+    const orderIds = orders.map((order) => Number(order.id)).filter((id) => Number.isInteger(id) && id > 0);
+    if (orderIds.length === 0) {
+      return orders;
+    }
+
+    const placeholders = orderIds.map(() => '?').join(', ');
+    const items = await this.db.query<any>(
+      `
+        SELECT id, order_id, product_id, product_name, product_image, price, quantity, subtotal
+        FROM order_items
+        WHERE order_id IN (${placeholders})
+        ORDER BY order_id ASC, id ASC
+      `,
+      orderIds,
+    );
+
+    const statsByOrderId = new Map<number, { itemCount: number; productCount: number; previewItems: any[] }>();
+    for (const item of items) {
+      const orderId = Number(item.order_id);
+      const stats = statsByOrderId.get(orderId) || { itemCount: 0, productCount: 0, previewItems: [] };
+      stats.itemCount += Number(item.quantity || 0);
+      stats.productCount += 1;
+      if (stats.previewItems.length < 4) {
+        stats.previewItems.push(item);
+      }
+      statsByOrderId.set(orderId, stats);
+    }
+
+    return orders.map((order) => {
+      const stats = statsByOrderId.get(Number(order.id));
+      return {
+        ...order,
+        order_items_count: stats?.itemCount || 0,
+        order_product_count: stats?.productCount || 0,
+        order_preview_items: stats?.previewItems || [],
+      };
+    });
   }
 
   async getOrderDetails(id: string): Promise<any> {

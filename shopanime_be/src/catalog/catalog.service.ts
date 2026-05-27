@@ -1,12 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { RowDataPacket } from 'mysql2/promise';
-import { DbService } from '../db/db.service.js';
+import { DbService, type DatabaseExecutor } from '../db/db.service.js';
 
 interface ProductInput {
   name?: unknown;
   slug?: unknown;
   author_id?: unknown;
   category_id?: unknown;
+  category_ids?: unknown;
   publisher_id?: unknown;
   series_id?: unknown;
   original_price?: unknown;
@@ -32,6 +33,7 @@ interface ProductFilters {
   maxPrice?: number;
   minRating?: number;
   seriesStatus?: string;
+  status?: string;
   sort?: ProductSort;
   page: number;
   limit: number;
@@ -129,10 +131,53 @@ function productFilters(query: Record<string, string | string[] | undefined>): P
     maxPrice,
     minRating,
     seriesStatus: nullableString(queryValue(query.seriesStatus))?.toUpperCase() || undefined,
+    status: nullableString(queryValue(query.status))?.toUpperCase() || undefined,
     sort,
     page,
     limit,
   };
+}
+
+function categoryIds(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const rawValues = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : [value];
+
+  const ids = rawValues
+    .map((item) => nullableId(item, 'category_ids'))
+    .filter((id): id is number => id !== null);
+
+  return [...new Set(ids)];
+}
+
+function slugBase(value: unknown, fallback: string) {
+  const source = nullableString(value) || fallback;
+  const slug = source
+    .toLowerCase()
+    .replace(/\u0111/g, 'd')
+    .replace(/\u0110/g, 'd')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+
+  return slug || fallback;
+}
+
+function slugWithSuffix(base: string, suffix: number | null, maxLength = 190) {
+  if (suffix === null) {
+    return base.slice(0, maxLength).replace(/-+$/g, '') || 'item';
+  }
+
+  const suffixText = `-${suffix}`;
+  return `${base.slice(0, maxLength - suffixText.length).replace(/-+$/g, '')}${suffixText}`;
 }
 
 function productStatus(value: unknown) {
@@ -219,9 +264,46 @@ function createPricing(body: ProductInput) {
   return buildPricing(originalPrice, discountPercent);
 }
 
+function isLegacyInlineImage(value: unknown) {
+  return typeof value === 'string' && value.trim().toLowerCase().startsWith('data:image/');
+}
+
+function productWithPublicImage<T extends Record<string, any>>(product: T): T {
+  if (!isLegacyInlineImage(product.image_url) && !isLegacyInlineImage(product.image)) {
+    return product;
+  }
+  return { ...product, image_url: null, image: null };
+}
+
+function productImageUrl(value: unknown) {
+  const imageUrl = nullableString(value);
+  if (isLegacyInlineImage(imageUrl)) {
+    throw new BadRequestException('Inline base64 images are not supported. Upload the image file and store the returned URL.');
+  }
+  return imageUrl;
+}
+
 @Injectable()
 export class CatalogService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
+
+
+  private async uniqueSlug(table: 'products' | 'categories', name: string, fallback: string, excludeId?: number | null) {
+    const base = slugBase(name, fallback);
+    for (let index = 0; index < 500; index += 1) {
+      const suffix = index === 0 ? null : index + 1;
+      const candidate = slugWithSuffix(base, suffix);
+      const existing = await this.db.one(
+        `SELECT id FROM ${table} WHERE slug = ?${excludeId ? ' AND id <> ?' : ''} LIMIT 1`,
+        excludeId ? [candidate, excludeId] : [candidate],
+      );
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    return slugWithSuffix(base, Date.now());
+  }
 
   private async assertReference(
     table: 'authors' | 'book_series' | 'categories' | 'publishers',
@@ -238,11 +320,93 @@ export class CatalogService {
     }
   }
 
-  async getProducts(query: Record<string, string | string[] | undefined> = {}) {
+  private async assertCategoryIds(ids: number[]) {
+    if (ids.length === 0) {
+      return;
+    }
+
+    const placeholders = ids.map(() => '?').join(', ');
+    const rows = await this.db.query<RowDataPacket & { id: number }>(`SELECT id FROM categories WHERE id IN (${placeholders})`, ids);
+    if (rows.length !== ids.length) {
+      throw new BadRequestException('One or more category_ids do not exist');
+    }
+  }
+
+  private async syncProductCategories(db: DatabaseExecutor, productId: number, ids: number[]) {
+    await db.execute('DELETE FROM product_categories WHERE product_id = ?', [productId]);
+    for (const categoryId of ids) {
+      await db.execute('INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)', [productId, categoryId]);
+    }
+  }
+
+  private async attachProductCategories<T extends Record<string, any>>(products: T[]) {
+    if (products.length === 0) {
+      return products;
+    }
+
+    const productIds = products.map((product) => Number(product.id)).filter((id) => Number.isInteger(id) && id > 0);
+    if (productIds.length === 0) {
+      return products;
+    }
+
+    const placeholders = productIds.map(() => '?').join(', ');
+    const rows = await this.db.query<RowDataPacket & { product_id: number; category_id: number; category_name: string }>(
+      `
+        SELECT pc.product_id, pc.category_id, c.name AS category_name
+        FROM product_categories pc
+        JOIN categories c ON c.id = pc.category_id
+        WHERE pc.product_id IN (${placeholders})
+        ORDER BY c.name ASC
+      `,
+      productIds,
+    );
+
+    const categoriesByProductId = new Map<number, Array<{ id: number; name: string }>>();
+    for (const row of rows) {
+      const productId = Number(row.product_id);
+      const categories = categoriesByProductId.get(productId) || [];
+      categories.push({ id: Number(row.category_id), name: row.category_name });
+      categoriesByProductId.set(productId, categories);
+    }
+
+    return products.map((product) => {
+      const secondaryCategories = categoriesByProductId.get(Number(product.id)) || [];
+      const categoryIds = [product.category_id, ...secondaryCategories.map((category) => category.id)]
+        .filter((id): id is number => Number.isInteger(Number(id)) && Number(id) > 0)
+        .map((id) => Number(id));
+      const categoryNames = [product.category_name, ...secondaryCategories.map((category) => category.name)].filter(Boolean);
+      return {
+        ...product,
+        category_ids: [...new Set(categoryIds)],
+        secondary_category_ids: secondaryCategories.map((category) => category.id),
+        category_names: [...new Set(categoryNames)],
+      };
+    });
+  }
+
+  async getProducts(query: Record<string, string | string[] | undefined> = {}, options: { includeInactive?: boolean } = {}) {
     const filters = productFilters(query);
-    const conditions = ['p.status = ?'];
-    const params: Array<string | number> = ['ACTIVE'];
+    const conditions: string[] = [];
+    const params: Array<string | number> = [];
+    if (!options.includeInactive) {
+      conditions.push('p.status = ?');
+      params.push('ACTIVE');
+    }
     const effectivePrice = 'p.price';
+
+    if (filters.status) {
+      if (!options.includeInactive) {
+        throw new BadRequestException('Product status filter is only available for admin product listing');
+      }
+      const statuses = filters.status === 'ALL' ? [] : filters.status.split(',').map((status) => status.trim()).filter(Boolean);
+      for (const status of statuses) {
+        productStatus(status);
+      }
+      if (statuses.length > 0) {
+        conditions.push(`p.status IN (${statuses.map(() => '?').join(', ')})`);
+        params.push(...statuses);
+      }
+    }
 
     if (filters.search) {
       const searchValue = `%${filters.search}%`;
@@ -332,7 +496,7 @@ export class CatalogService {
         FROM reviews
         GROUP BY product_id
       ) rs ON rs.product_id = p.id
-      WHERE ${conditions.join(' AND ')}
+      ${conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''}
     `;
     const countRow = await this.db.one<{ total: number } & RowDataPacket>(
       `SELECT COUNT(DISTINCT p.id) AS total ${fromClause}`,
@@ -364,7 +528,7 @@ export class CatalogService {
     `, [...params, filters.limit, offset]);
 
     return {
-      data: products,
+      data: (await this.attachProductCategories(products as any[])).map((product: any) => productWithPublicImage(product)),
       meta: {
         page,
         limit: filters.limit,
@@ -420,12 +584,12 @@ export class CatalogService {
       throw new NotFoundException('Product not found');
     }
 
-    return product;
+    const [productWithCategories] = await this.attachProductCategories([product as Record<string, any>]);
+    return productWithPublicImage(productWithCategories);
   }
 
   async createProduct(body: ProductInput) {
     const name = nullableString(body.name);
-    const slug = nullableString(body.slug);
     const pricing = createPricing(body);
     const shipping = createShipping(body);
     const stockQuantity = nullableNumber(body.stock_quantity) ?? 0;
@@ -433,6 +597,8 @@ export class CatalogService {
     const categoryId = nullableId(body.category_id, 'category_id');
     const publisherId = nullableId(body.publisher_id, 'publisher_id');
     const seriesId = nullableId(body.series_id, 'series_id');
+    const secondaryCategoryIds = (categoryIds(body.category_ids) || []).filter((id) => id !== categoryId);
+    const allCategoryIds = [...new Set([categoryId, ...secondaryCategoryIds].filter((id): id is number => id !== null))];
 
     if (!name) {
       throw new BadRequestException('Product name is required');
@@ -443,52 +609,56 @@ export class CatalogService {
     }
 
     await this.assertReference('authors', authorId, 'author_id');
-    await this.assertReference('categories', categoryId, 'category_id');
+    await this.assertCategoryIds(allCategoryIds);
     await this.assertReference('publishers', publisherId, 'publisher_id');
     await this.assertReference('book_series', seriesId, 'series_id');
 
-    const result = await this.db.execute(
-      `
-        INSERT INTO products (
-          name, slug, author_id, category_id, publisher_id, series_id, original_price, discount_percent, price, discount_price,
-          shipping_fee, shipping_discount_percent, shipping_final_fee, image_url, description, stock_quantity, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        name,
-        slug,
-        authorId,
-        categoryId,
-        publisherId,
-        seriesId,
-        pricing.originalPrice,
-        pricing.discountPercent,
-        pricing.finalPrice,
-        pricing.discountPrice,
-        shipping.shippingFee,
-        shipping.shippingDiscountPercent,
-        shipping.shippingFinalFee,
-        nullableString(body.image_url),
-        nullableString(body.description),
-        stockQuantity,
-        productStatus(body.status),
-      ],
-    );
+    return this.db.transaction(async (tx) => {
+      const result = await tx.execute(
+        `
+          INSERT INTO products (
+            name, slug, author_id, category_id, publisher_id, series_id, original_price, discount_percent, price, discount_price,
+            shipping_fee, shipping_discount_percent, shipping_final_fee, image_url, description, stock_quantity, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          name,
+          slug,
+          authorId,
+          categoryId,
+          publisherId,
+          seriesId,
+          pricing.originalPrice,
+          pricing.discountPercent,
+          pricing.finalPrice,
+          pricing.discountPrice,
+          shipping.shippingFee,
+          shipping.shippingDiscountPercent,
+          shipping.shippingFinalFee,
+          productImageUrl(body.image_url),
+          nullableString(body.description),
+          stockQuantity,
+          productStatus(body.status),
+        ],
+      );
 
-    return result.insertId;
+      await this.syncProductCategories(tx, result.insertId, secondaryCategoryIds);
+      return { id: result.insertId, slug };
+    });
   }
 
   async updateProduct(id: string, body: ProductInput) {
     const name = body.name === undefined ? undefined : nullableString(body.name);
-    const slug = body.slug === undefined ? undefined : nullableString(body.slug);
+    const slug = name === undefined ? undefined : await this.uniqueSlug('products', name, 'product', Number(id));
     const stockQuantity = optionalNumber(body.stock_quantity);
     const status = body.status === undefined ? undefined : productStatus(body.status);
-    const imageUrl = body.image_url === undefined ? undefined : nullableString(body.image_url);
+    const imageUrl = body.image_url === undefined ? undefined : productImageUrl(body.image_url);
     const description = body.description === undefined ? undefined : nullableString(body.description);
     const categoryId = optionalId(body.category_id, 'category_id');
     const authorId = optionalId(body.author_id, 'author_id');
     const publisherId = optionalId(body.publisher_id, 'publisher_id');
     const seriesId = optionalId(body.series_id, 'series_id');
+    const secondaryCategoryIds = categoryIds(body.category_ids);
     const hasPricingChange = hasField(body, 'original_price')
       || hasField(body, 'discount_percent')
       || hasField(body, 'price')
@@ -509,21 +679,27 @@ export class CatalogService {
     await this.assertReference('categories', categoryId, 'category_id');
     await this.assertReference('publishers', publisherId, 'publisher_id');
     await this.assertReference('book_series', seriesId, 'series_id');
+    if (secondaryCategoryIds !== undefined) {
+      await this.assertCategoryIds(secondaryCategoryIds);
+    }
+
+    const existing = await this.db.one<RowDataPacket & {
+      category_id: number | null;
+      original_price: number | string | null;
+      discount_percent: number | string | null;
+      price: number | string;
+      discount_price: number | string | null;
+      shipping_fee: number | string | null;
+      shipping_discount_percent: number | string | null;
+    }>('SELECT category_id, original_price, discount_percent, price, discount_price, shipping_fee, shipping_discount_percent FROM products WHERE id = ?', [id]);
+
+    if (!existing) {
+      throw new NotFoundException('Product not found');
+    }
 
     let pricing: ReturnType<typeof buildPricing> | null = null;
     let shipping: ReturnType<typeof buildShipping> | null = null;
     if (hasPricingChange) {
-      const existing = await this.db.one<RowDataPacket & {
-        original_price: number | string | null;
-        discount_percent: number | string | null;
-        price: number | string;
-        discount_price: number | string | null;
-      }>('SELECT original_price, discount_percent, price, discount_price FROM products WHERE id = ?', [id]);
-
-      if (!existing) {
-        throw new NotFoundException('Product not found');
-      }
-
       const currentOriginal = nullableNumber(existing.original_price) ?? nullableNumber(existing.price) ?? 0;
       const originalPrice = hasField(body, 'original_price')
         ? nullableNumber(body.original_price)
@@ -545,15 +721,6 @@ export class CatalogService {
     }
 
     if (hasShippingChange) {
-      const existing = await this.db.one<RowDataPacket & {
-        shipping_fee: number | string | null;
-        shipping_discount_percent: number | string | null;
-      }>('SELECT shipping_fee, shipping_discount_percent FROM products WHERE id = ?', [id]);
-
-      if (!existing) {
-        throw new NotFoundException('Product not found');
-      }
-
       const shippingFee = hasField(body, 'shipping_fee')
         ? nullableNumber(body.shipping_fee) ?? 0
         : nullableNumber(existing.shipping_fee) ?? 0;
@@ -594,19 +761,31 @@ export class CatalogService {
     pushUpdate('publisher_id = ?', publisherId);
     pushUpdate('series_id = ?', seriesId);
 
-    if (updates.length === 0) {
+    const effectivePrimaryCategoryId = categoryId === undefined ? Number(existing.category_id) || null : categoryId;
+    const normalizedSecondaryCategoryIds = secondaryCategoryIds === undefined
+      ? undefined
+      : secondaryCategoryIds.filter((secondaryCategoryId) => secondaryCategoryId !== effectivePrimaryCategoryId);
+
+    if (updates.length === 0 && normalizedSecondaryCategoryIds === undefined) {
       return;
     }
-    params.push(id);
 
-    const result = await this.db.execute(
-      `UPDATE products SET ${updates.join(', ')} WHERE id = ?`,
-      params,
-    );
+    await this.db.transaction(async (tx) => {
+      if (updates.length > 0) {
+        const result = await tx.execute(
+          `UPDATE products SET ${updates.join(', ')} WHERE id = ?`,
+          [...params, id],
+        );
 
-    if (result.affectedRows === 0) {
-      throw new NotFoundException('Product not found');
-    }
+        if (result.affectedRows === 0) {
+          throw new NotFoundException('Product not found');
+        }
+      }
+
+      if (normalizedSecondaryCategoryIds !== undefined) {
+        await this.syncProductCategories(tx, Number(id), normalizedSecondaryCategoryIds);
+      }
+    });
   }
 
   async deleteProduct(id: string) {
@@ -627,13 +806,14 @@ export class CatalogService {
       throw new BadRequestException('Category name is required');
     }
     await this.assertReference('categories', parentId, 'parent_id');
+    const slug = await this.uniqueSlug('categories', name, 'category');
     const result = await this.db.execute('INSERT INTO categories (name, slug, parent_id, description) VALUES (?, ?, ?, ?)', [
       name,
-      nullableString(body.slug),
+      slug,
       parentId,
       nullableString(body.description),
     ]);
-    return result.insertId;
+    return { id: result.insertId, slug };
   }
 
   async updateCategory(id: string, body: any) {
@@ -657,7 +837,7 @@ export class CatalogService {
     };
 
     pushUpdate('name = ?', name);
-    pushUpdate('slug = ?', body.slug === undefined ? undefined : nullableString(body.slug));
+    pushUpdate('slug = ?', name === undefined ? undefined : await this.uniqueSlug('categories', name, 'category', categoryId));
     pushUpdate('parent_id = ?', parentId);
     pushUpdate('description = ?', body.description === undefined ? undefined : nullableString(body.description));
     pushUpdate('status = ?', body.status === undefined ? undefined : categoryStatus(body.status));
@@ -695,12 +875,12 @@ export class CatalogService {
     }
     const result = await this.db.execute('INSERT INTO authors (name, slug, bio, avatar_url, country) VALUES (?, ?, ?, ?, ?)', [
       name,
-      nullableString(body.slug),
+      slug,
       nullableString(body.bio),
       nullableString(body.avatar_url),
       nullableString(body.country),
     ]);
-    return result.insertId;
+    return { id: result.insertId, slug };
   }
 
   async updateAuthor(id: string, body: any) {

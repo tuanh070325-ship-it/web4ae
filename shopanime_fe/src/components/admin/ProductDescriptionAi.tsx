@@ -20,6 +20,7 @@ import { apiPost } from '../../lib/api';
 import type { ApiResponse } from '../../lib/types';
 import {
   adminIconButtonClass,
+  adminInlineLabelClass,
   adminPrimaryButtonClass,
 } from './AdminUI';
 
@@ -186,10 +187,10 @@ export function ProductDescriptionAi({ value, onChange, product }: ProductDescri
   };
 
   return (
-    <div className="relative md:col-span-4">
+    <div className="relative">
       <div className="overflow-hidden rounded border border-[#343d43] bg-[#101417] transition-colors focus-within:border-red-500/70">
         <div className="border-b border-[#263038] px-3 py-2">
-          <div className="mb-2 text-xs font-semibold text-zinc-500">Description</div>
+          <div className={`mb-2 ${adminInlineLabelClass}`}>Description</div>
           <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
             {editorTools.map(({ label, icon: Icon }) => (
               <button

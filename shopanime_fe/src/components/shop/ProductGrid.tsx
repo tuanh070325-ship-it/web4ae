@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Star } from 'lucide-react';
-import { getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount, toNumber } from '../../lib/format';
+import { getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount, toNumber, useProductPlaceholderImage } from '../../lib/format';
 import type { Product } from '../../lib/types';
 import { ProductDealPrice } from '../ui/ProductDealPrice';
 
@@ -27,6 +27,7 @@ export const ProductGrid = memo(function ProductGrid({ products, onAddToCart }: 
           <div className="relative aspect-[3/4] p-3 pb-0">
             <img
               src={getProductImage(product)}
+              onError={useProductPlaceholderImage}
               alt={product.name}
               className="w-full h-full object-cover rounded-md block"
             />

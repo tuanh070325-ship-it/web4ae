@@ -73,22 +73,62 @@ export class UsersService {
   }
 
   async updateUser(id: string, body: any) {
+    const username = optionalString(body.username);
+    const email = optionalString(body.email)?.toLowerCase();
+    const password = optionalString(body.password);
     const fullName = optionalString(body.full_name);
     const phone = optionalString(body.phone);
-    const avatarUrl = optionalString(body.avatar_url);
+    const hasAvatarUrl = body.avatar_url !== undefined;
+    const avatarUrl = hasAvatarUrl ? nullableString(body.avatar_url) : undefined;
     const status = body.status === undefined ? undefined : userStatus(body.status);
     const role = body.role === undefined ? undefined : userRole(body.role);
+
+    if (body.username !== undefined && !username) {
+      throw new BadRequestException('Username cannot be empty');
+    }
+    if (body.email !== undefined && !email) {
+      throw new BadRequestException('Email cannot be empty');
+    }
+    if (password !== undefined && password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
+    }
+
+    if (username || email) {
+      const existing = await this.db.one<{ id: number } & any>(
+        'SELECT id FROM users WHERE (username = ? OR email = ?) AND id <> ?',
+        [username || '', email || '', id],
+      );
+      if (existing) {
+        throw new BadRequestException('Username or email already exists');
+      }
+    }
+
+    const passwordHash = password ? await hashPassword(password) : undefined;
     const result = await this.db.execute(
       `
         UPDATE users
-        SET full_name = COALESCE(?, full_name),
+        SET username = COALESCE(?, username),
+            email = COALESCE(?, email),
+            password_hash = COALESCE(?, password_hash),
+            full_name = COALESCE(?, full_name),
             phone = COALESCE(?, phone),
-            avatar_url = COALESCE(?, avatar_url),
+            avatar_url = CASE WHEN ? = 1 THEN ? ELSE avatar_url END,
             status = COALESCE(?, status),
             role = COALESCE(?, role)
         WHERE id = ?
       `,
-      [fullName ?? null, phone ?? null, avatarUrl ?? null, status ?? null, role ?? null, id],
+      [
+        username ?? null,
+        email ?? null,
+        passwordHash ?? null,
+        fullName ?? null,
+        phone ?? null,
+        hasAvatarUrl ? 1 : 0,
+        avatarUrl ?? null,
+        status ?? null,
+        role ?? null,
+        id,
+      ],
     );
 
     if (result.affectedRows === 0) {

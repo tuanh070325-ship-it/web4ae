@@ -11,6 +11,7 @@ import { Login } from './views/Login';
 import { Register } from './views/Register';
 import { Profile } from './views/Profile';
 import { Orders } from './views/Orders';
+import { OrderDetail } from './views/OrderDetail';
 import { AdminOrders } from './views/AdminOrders';
 import { AdminProducts } from './views/AdminProducts';
 import { AdminDashboard } from './views/AdminDashboard';
@@ -48,6 +49,7 @@ function App() {
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="profile" element={<Profile />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/:id" element={<OrderDetail />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
