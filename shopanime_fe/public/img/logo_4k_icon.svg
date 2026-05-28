@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="4096" height="4096" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2d2d"/>
+      <stop offset="100%" stop-color="#b30000"/>
+    </linearGradient>
+
+    <linearGradient id="whiteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#d9d9d9"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Triangle -->
+  <g filter="url(#shadow)">
+    <path d="M512 90 L860 760 L770 760 L512 250 L254 760 L164 760 Z"
+          fill="none"
+          stroke="url(#redGrad)"
+          stroke-width="55"
+          stroke-linejoin="round"/>
+
+    <!-- Inner Stylized A -->
+    <path d="M512 260 
+             L700 690 
+             L610 690 
+             L560 580 
+             L465 580 
+             L410 690 
+             L320 690 Z"
+          fill="url(#whiteGrad)"/>
+
+    <!-- Center Cut -->
+    <path d="M512 400
+             L585 545
+             L545 545
+             L512 485
+             L480 545
+             L440 545 Z"
+          fill="url(#redGrad)"/>
+
+    <!-- Lightning Tail -->
+    <path d="M470 580
+             L610 580
+             L540 650
+             L620 650
+             L430 790
+             L500 670
+             L410 670 Z"
+          fill="url(#whiteGrad)"/>
+  </g>
+</svg>

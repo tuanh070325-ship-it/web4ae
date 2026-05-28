@@ -4,7 +4,6 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { BarChart3, BookOpen, FileText, FolderTree, LineChart, LogOut, Menu, PenTool, Users, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { getUserAvatar } from '../../lib/avatar';
-import logoIcon from '../../../img/logo.png';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: BarChart3 },
@@ -29,7 +28,7 @@ export function AdminLayout() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-20 items-center justify-between gap-3 px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <img src={logoIcon.src} alt="" className="h-10 w-10 shrink-0 object-contain" />
+          <img src="/img/logo_4k_icon.svg" alt="" className="h-10 w-10 shrink-0 object-contain" />
           <div className="min-w-0">
             <div className="truncate text-[20px] font-black leading-tight tracking-wide text-white">AkibaCore</div>
             <div className="text-xs font-black uppercase tracking-[0.18em] text-red-400">Admin</div>

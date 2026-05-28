@@ -8,7 +8,6 @@ import { PromoMarquee } from './PromoMarquee';
 import { apiGet } from '../../lib/api';
 import { formatUsd, getProductFinalPrice, getProductImage, getProductPath, useProductPlaceholderImage } from '../../lib/format';
 import type { ApiResponse, CartItem, WishlistItem } from '../../lib/types';
-import logoIcon from '../../../img/logo.png';
 
 const primaryLinks = [
   { to: '/', label: 'Home' },
@@ -232,7 +231,7 @@ export function Navbar() {
         <div className="flex items-center gap-10">
           <Link to="/" className="flex items-center group transition-colors">
             <span className="flex items-center gap-2">
-              <img src={logoIcon.src} alt="" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
+              <img src="/img/logo_4k_icon.svg" alt="" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
               <span className="text-[22px] sm:text-[26px] tracking-wide font-black text-white transition-colors group-hover:text-[#e63946]">
                 AkibaCore
               </span>

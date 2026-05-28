@@ -6,6 +6,11 @@ import '../index.css';
 export const metadata: Metadata = {
   title: 'AkibaCore',
   description: 'Manga and comic shop',
+  icons: {
+    icon: '/img/logo_4k_icon.svg',
+    shortcut: '/img/logo_4k_icon.svg',
+    apple: '/img/logo_4k_icon.svg',
+  },
 };
 
 const extensionAttributeCleanup = `

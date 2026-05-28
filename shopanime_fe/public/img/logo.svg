@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">AkibaCore logo</title>
+  <desc id="desc">Stylized AkibaCore letter A mark in red, white, and charcoal.</desc>
+  <defs>
+    <linearGradient id="redTop" x1="128" y1="20" x2="128" y2="226" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff1324" />
+      <stop offset="0.56" stop-color="#e30613" />
+      <stop offset="1" stop-color="#b90009" />
+    </linearGradient>
+    <linearGradient id="whiteFace" x1="107" y1="68" x2="151" y2="203" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="0.58" stop-color="#f1f1f1" />
+      <stop offset="1" stop-color="#cfcfcf" />
+    </linearGradient>
+    <filter id="softShadow" x="-12%" y="-12%" width="124%" height="128%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <path d="M128 21 31 219h42l55-111 55 111h42L128 21Z" fill="url(#redTop)" />
+    <path d="m128 64 67 134h-41l-26-52-26 52H61l67-134Z" fill="#1d1f25" opacity="0.22" />
+    <path d="m128 72 62 126h-40l-22-45-22 45H66l62-126Z" fill="url(#whiteFace)" />
+    <path d="M128 118 94 198h34l18-42 21 42h35l-40-80h-34Z" fill="#ffffff" opacity="0.78" />
+    <path d="M103 187h91v17h-80l-40 29 17-29H54l20-38h37l-8 21Z" fill="#f7f7f7" />
+    <path d="M103 187h91v17h-80l-40 29 17-29H54l20-38h37l-8 21Z" fill="none" stroke="#9a9a9a" stroke-width="5" stroke-linejoin="round" opacity="0.55" />
+    <path d="m128 107 29 58h-35l-16 31 22-89Z" fill="#e30613" />
+    <path d="m128 107 29 58h-18l-17-34-16 65 22-89Z" fill="#ff1f2f" />
+  </g>
+</svg>

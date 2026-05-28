@@ -79,7 +79,10 @@ export function Register() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-12">
-          <p className="text-sm text-zinc-500">AkibaCore</p>
+          <Link to="/" className="inline-flex items-center gap-3 text-sm font-black text-white">
+            <img src="/img/logo_4k_icon.svg" alt="" className="h-9 w-9 object-contain" />
+            <span>AkibaCore</span>
+          </Link>
         </div>
       </div>
 
@@ -88,7 +91,8 @@ export function Register() {
         <div className="relative w-full max-w-md">
           <div className="mb-8 text-center">
             <Link to="/" className="inline-flex items-center justify-center gap-2 text-3xl font-black text-white">
-              <span className="text-[#ff0038]">A</span>kibaCore
+              <img src="/img/logo_4k_icon.svg" alt="" className="h-10 w-10 object-contain" />
+              <span>AkibaCore</span>
             </Link>
             <h1 className="mt-4 text-3xl font-black text-white">Create your shelf</h1>
             <p className="mt-2 text-sm font-semibold text-zinc-500">Join manga drops, wishlist sync, and member-only deals.</p>

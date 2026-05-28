@@ -74,7 +74,7 @@ export function Login() {
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-7 sm:px-6 xl:grid-cols-[minmax(0,1.04fr)_minmax(400px,0.84fr)] xl:px-8 xl:py-10">
         <section className="hidden min-h-[700px] flex-col justify-center xl:flex">
           <Link to="/" className="mb-10 inline-flex w-fit items-center gap-3 text-2xl font-black tracking-tight text-white">
-            <span className="text-4xl leading-none text-[#ff0038]">A</span>
+            <img src="/img/logo_4k_icon.svg" alt="" className="h-10 w-10 object-contain" />
             <span>AkibaCore</span>
           </Link>
 
@@ -145,7 +145,7 @@ export function Login() {
         <section className="mx-auto w-full max-w-[460px] xl:max-w-[430px] 2xl:max-w-[460px]">
           <div className="mb-6 text-center xl:hidden">
             <Link to="/" className="inline-flex items-center justify-center gap-3 text-2xl font-black tracking-tight text-white">
-              <span className="text-4xl leading-none text-[#ff0038]">A</span>
+              <img src="/img/logo_4k_icon.svg" alt="" className="h-10 w-10 object-contain" />
               <span>AkibaCore</span>
             </Link>
             <p className="mt-3 text-sm font-semibold text-zinc-400">Your manga shelf is waiting.</p>
@@ -158,7 +158,8 @@ export function Login() {
 
             <div className="relative mb-7 text-center">
               <Link to="/" className="hidden items-center justify-center gap-2 text-2xl font-black text-white xl:inline-flex">
-                <span className="text-3xl leading-none text-[#ff0038]">A</span>kibaCore
+                <img src="/img/logo_4k_icon.svg" alt="" className="h-9 w-9 object-contain" />
+                <span>AkibaCore</span>
               </Link>
               <h2 className="text-2xl font-black text-white sm:text-3xl xl:mt-5">Back to AkibaCore</h2>
               <p className="mt-2 text-sm font-semibold text-zinc-400">{contextCopy}</p>
