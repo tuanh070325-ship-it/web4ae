@@ -1,0 +1,13 @@
+﻿{
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "args": ["-NoLogo"]
+    }
+  },
+  "terminal.integrated.env.windows": {
+    "Path": "C:\\Program Files\\nodejs;C:\\Users\\Admin\\AppData\\Roaming\\npm;${env:Path}",
+    "PATH": "C:\\Program Files\\nodejs;C:\\Users\\Admin\\AppData\\Roaming\\npm;${env:PATH}"
+  }
+}

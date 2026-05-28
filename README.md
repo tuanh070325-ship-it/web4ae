@@ -48,6 +48,30 @@ DB_SEED_ON_START=false
 - `MOCK_DATA=true` inserts demo data once. The backend records the run in `app_seed_runs` to prevent duplicate inserts.
 - `DB_SEED_ON_START` is a legacy compatibility flag. Prefer `MOCK_DATA`.
 
+## Demo Data And Analytics
+
+Use schema sync when tables were added but the database already exists:
+
+```powershell
+npm --prefix shopanime_be run db:sync
+```
+
+Use the deterministic demo seed when you want admin pages to show a coherent 30-day ecommerce timeline:
+
+```powershell
+npm --prefix shopanime_be run db:seed:demo
+```
+
+`db:seed:demo` is a development command. It keeps catalog tables such as products, authors, and categories, then resets operational/demo tables including carts, wishlists, orders, order items, feed/review demo activity, inventory transactions, and analytics. It inserts customer accounts, addresses, carts, wishlists, orders, order items, and analytics events whose dates and revenue match each other.
+
+Admin analytics is available at:
+
+```text
+http://localhost:3000/admin/analytics
+```
+
+The admin dashboard (`/admin`) is for operational overview: revenue, orders, users, products, and recent orders. The analytics page (`/admin/analytics`) is for behavioral analysis: visitors, pageviews, product clicks, add-to-cart, funnel, top pages, and product performance.
+
 ## Run Development
 
 The root scripts are the standard entrypoint. Run commands from the repository root so backend/frontend scripts stay consistent with the same repository version.
@@ -149,6 +173,13 @@ Use two terminals for production start as well, or let Docker Compose manage bot
 | `npm run build` | Backend build + frontend production build | Production verification |
 | `npm run backend:start` | Runs compiled backend | Production backend after build |
 | `npm run frontend:start` | Runs compiled frontend | Production frontend after build |
+
+Backend package scripts:
+
+| Command | What it does |
+| --- | --- |
+| `npm --prefix shopanime_be run db:sync` | Creates missing schema objects and seeds only when the normal seed rules allow it |
+| `npm --prefix shopanime_be run db:seed:demo` | Rebuilds deterministic development activity data without dropping schema/catalog tables |
 
 Important notes:
 

@@ -1,5 +1,6 @@
 import type { CanActivate, ExecutionContext} from '@nestjs/common';
 import { Injectable, UnauthorizedException, ForbiddenException, createParamDecorator, Inject } from '@nestjs/common';
+import type { RowDataPacket } from 'mysql2/promise';
 import { DbService } from './db.service.js';
 import { verifyAuthToken } from '../auth/token.js';
 
@@ -9,6 +10,8 @@ export interface RequestUser {
   email: string;
   role: string;
 }
+
+interface RequestUserRow extends RowDataPacket, RequestUser {}
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -27,7 +30,7 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      const user = await this.dbService.one<any>('SELECT id, username, email, role FROM users WHERE id = ?', [userId]);
+      const user = await this.dbService.one<RequestUserRow>('SELECT id, username, email, role FROM users WHERE id = ?', [userId]);
       
       if (!user) {
         throw new UnauthorizedException('Unauthorized: Invalid user');

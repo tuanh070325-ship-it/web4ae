@@ -10,6 +10,9 @@ const DEMO_PASSWORD_HASH = 'base64:c2NyeXB0OmIyNTk2MWVhMDNhZDZkMmRlNzU1ZjQ4ZmM0Z
 
 const tables = [
   'app_seed_runs',
+  'analytics_product_stats',
+  'analytics_daily_stats',
+  'analytics_events',
   'post_likes',
   'post_comments',
   'posts',
@@ -261,6 +264,60 @@ const schemaStatements = [
     subtotal DECIMAL(12,2) NULL,
     CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    event_name VARCHAR(80) NOT NULL,
+    event_type VARCHAR(40) NOT NULL,
+    session_id VARCHAR(80) NOT NULL,
+    user_id INT UNSIGNED NULL,
+    product_id INT UNSIGNED NULL,
+    order_id INT UNSIGNED NULL,
+    path VARCHAR(500) NULL,
+    referrer VARCHAR(500) NULL,
+    utm_source VARCHAR(120) NULL,
+    utm_medium VARCHAR(120) NULL,
+    utm_campaign VARCHAR(160) NULL,
+    device_type VARCHAR(40) NULL,
+    browser VARCHAR(80) NULL,
+    user_agent TEXT NULL,
+    ip_hash VARCHAR(128) NULL,
+    metadata JSON NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_analytics_created_at (created_at),
+    INDEX idx_analytics_event_name (event_name),
+    INDEX idx_analytics_product_id (product_id),
+    INDEX idx_analytics_user_id (user_id),
+    INDEX idx_analytics_path (path(191)),
+    INDEX idx_analytics_session_id (session_id),
+    CONSTRAINT fk_analytics_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_analytics_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+    CONSTRAINT fk_analytics_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_daily_stats (
+    date_key DATE NOT NULL PRIMARY KEY,
+    pageviews INT NOT NULL DEFAULT 0,
+    visitors INT NOT NULL DEFAULT 0,
+    product_views INT NOT NULL DEFAULT 0,
+    product_clicks INT NOT NULL DEFAULT 0,
+    add_to_cart INT NOT NULL DEFAULT 0,
+    checkout_starts INT NOT NULL DEFAULT 0,
+    orders_completed INT NOT NULL DEFAULT 0,
+    revenue DECIMAL(12,2) NOT NULL DEFAULT 0
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_product_stats (
+    product_id INT UNSIGNED NOT NULL PRIMARY KEY,
+    impressions INT NOT NULL DEFAULT 0,
+    clicks INT NOT NULL DEFAULT 0,
+    detail_views INT NOT NULL DEFAULT 0,
+    add_to_cart INT NOT NULL DEFAULT 0,
+    purchases INT NOT NULL DEFAULT 0,
+    revenue DECIMAL(12,2) NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_analytics_product_stats_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   `CREATE TABLE IF NOT EXISTS reviews (

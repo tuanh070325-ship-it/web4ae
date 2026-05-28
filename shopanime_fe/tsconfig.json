@@ -40,7 +40,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-codex-chatbot/types/**/*.ts",
+    ".next-codex-chatbot/dev/types/**/*.ts"
   ],
   "exclude": [
     ".next",

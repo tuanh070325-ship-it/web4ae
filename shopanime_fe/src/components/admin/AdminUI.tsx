@@ -37,6 +37,12 @@ export const adminTableClass = 'w-full min-w-[760px] text-left text-sm';
 export const adminThClass = 'px-4 py-3 text-sm font-bold text-zinc-300';
 export const adminTdClass = 'px-4 py-3 text-sm text-zinc-200';
 
+export interface AdminPagerMeta {
+  page: number;
+  limit: number;
+  total: number;
+}
+
 export function AdminPage({
   title,
   description,
@@ -75,6 +81,35 @@ export function AdminTable({ children }: { children: ReactNode }) {
     <AdminPanel>
       <div className="overflow-x-auto">{children}</div>
     </AdminPanel>
+  );
+}
+
+export function AdminToolbar({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded bg-[#171d21] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.22)] lg:flex-row lg:flex-wrap lg:items-end">
+      {children}
+    </div>
+  );
+}
+
+export function AdminEmptyState({ message }: { message: string }) {
+  return <div className="rounded bg-[#171d21] px-4 py-10 text-center text-sm font-semibold text-zinc-500">{message}</div>;
+}
+
+export function AdminPaginationBar({ meta, onPageChange }: { meta: AdminPagerMeta; onPageChange: (page: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(meta.total / meta.limit));
+  const start = meta.total === 0 ? 0 : (meta.page - 1) * meta.limit + 1;
+  const end = Math.min(meta.total, meta.page * meta.limit);
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded bg-[#171d21] px-4 py-3 text-sm font-semibold text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+      <span>Showing {start}-{end} of {meta.total}</span>
+      <div className="flex items-center gap-2">
+        <button type="button" disabled={meta.page <= 1} onClick={() => onPageChange(meta.page - 1)} className={adminSecondaryButtonClass}>Prev</button>
+        <span className="px-2 text-zinc-300">{meta.page} / {totalPages}</span>
+        <button type="button" disabled={meta.page >= totalPages} onClick={() => onPageChange(meta.page + 1)} className={adminSecondaryButtonClass}>Next</button>
+      </div>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
-import { UsersService } from './users.service.js';
+import { UsersService, type AddressInput, type UserInput } from './users.service.js';
 import type { RequestUser } from '../db/auth.guard.js';
 import { AuthGuard, AdminGuard, CurrentUser } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
@@ -28,7 +28,7 @@ export class UsersController {
 
   @Post()
   @UseGuards(AuthGuard, AdminGuard)
-  async createUser(@Body() body: any) {
+  async createUser(@Body() body: UserInput) {
     const newId = await this.usersService.createUser(body);
     return { data: { id: newId }, message: 'User created' };
   }
@@ -44,7 +44,7 @@ export class UsersController {
 
   @Put(':id')
   @UseGuards(AuthGuard)
-  async updateUser(@Param('id') id: string, @Body() body: any, @CurrentUser() user: RequestUser) {
+  async updateUser(@Param('id') id: string, @Body() body: UserInput, @CurrentUser() user: RequestUser) {
     if (user.id !== parseInt(id) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden: Cannot update other users profiles');
     }
@@ -77,7 +77,7 @@ export class UsersController {
 
   @Post(':id/addresses')
   @UseGuards(AuthGuard)
-  async createAddress(@Param('id') id: string, @Body() body: any, @CurrentUser() user: RequestUser) {
+  async createAddress(@Param('id') id: string, @Body() body: AddressInput, @CurrentUser() user: RequestUser) {
     if (user.id !== parseInt(id) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden: Cannot create address for other users');
     }
@@ -87,7 +87,7 @@ export class UsersController {
 
   @Put(':id/addresses/:addressId')
   @UseGuards(AuthGuard)
-  async updateAddress(@Param('id') id: string, @Param('addressId') addressId: string, @Body() body: any, @CurrentUser() user: RequestUser) {
+  async updateAddress(@Param('id') id: string, @Param('addressId') addressId: string, @Body() body: AddressInput, @CurrentUser() user: RequestUser) {
     if (user.id !== parseInt(id) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden: Cannot update address for other users');
     }

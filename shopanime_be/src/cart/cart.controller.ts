@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, ForbiddenException, Inject } from '@nestjs/common';
-import { CartService } from './cart.service.js';
+import { CartService, type CartItemInput } from './cart.service.js';
 import type { RequestUser } from '../db/auth.guard.js';
 import { AuthGuard, CurrentUser } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
@@ -44,8 +44,8 @@ export class CartController {
 
   @Post()
   @UseGuards(AuthGuard)
-  async addToCart(@Body() body: any, @CurrentUser() user: RequestUser) {
-    if (user.id !== parseInt(body.user_id) && user.role !== 'ADMIN') {
+  async addToCart(@Body() body: CartItemInput, @CurrentUser() user: RequestUser) {
+    if (user.id !== Number(body.user_id) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden');
     }
     await this.cartService.addToCart(body);
@@ -68,13 +68,13 @@ export class CartController {
   async updateCart(
     @Param('user_id') userId: string, 
     @Param('product_id') productId: string, 
-    @Body() body: any, 
+    @Body() body: { quantity?: unknown }, 
     @CurrentUser() user: RequestUser,
   ) {
     if (user.id !== parseInt(userId) && user.role !== 'ADMIN') {
       throw new ForbiddenException('Forbidden');
     }
-    await this.cartService.updateCart(userId, productId, body.quantity);
+    await this.cartService.updateCart(userId, productId, Number(body.quantity));
     return { success: true };
   }
 

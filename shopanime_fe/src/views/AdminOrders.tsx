@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import { apiGet, apiPut } from '../lib/api';
 import { formatUsd } from '../lib/format';
 import type { ApiResponse, Order, OrderDetails, OrderStatus } from '../lib/types';
-import { AdminPage, adminIconButtonClass, adminInputClass, adminPanelClass } from '../components/admin/AdminUI';
+import { AdminEmptyState, AdminPage, AdminPaginationBar, AdminToolbar, adminIconButtonClass, adminInputClass, adminPanelClass, adminSecondaryButtonClass } from '../components/admin/AdminUI';
 import { AdminOrdersTable } from '../components/admin/orders/AdminOrdersTable';
 
 const orderStatuses: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'];
@@ -22,6 +22,11 @@ export function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [message, setMessage] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
@@ -37,14 +42,34 @@ export function AdminOrders() {
     const keyword = query.trim().toLowerCase();
     return orders.filter((order) => {
       const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const orderDate = String(order.created_at || order.date || '').slice(0, 10);
+      const matchesFrom = !from || orderDate >= from;
+      const matchesTo = !to || orderDate <= to;
       const matchesKeyword =
         !keyword ||
         [order.order_code, order.receiver_name, order.receiver_phone, order.shipping_city, order.status, order.id]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(keyword));
-      return matchesStatus && matchesKeyword;
+      return matchesStatus && matchesFrom && matchesTo && matchesKeyword;
+    }).sort((left, right) => {
+      if (sort === 'amount_desc') {return Number(orderTotal(right)) - Number(orderTotal(left));}
+      if (sort === 'amount_asc') {return Number(orderTotal(left)) - Number(orderTotal(right));}
+      if (sort === 'status') {return left.status.localeCompare(right.status);}
+      return new Date(right.created_at || right.date || 0).getTime() - new Date(left.created_at || left.date || 0).getTime();
     });
-  }, [orders, query, statusFilter]);
+  }, [from, orders, query, sort, statusFilter, to]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / limit));
+  const currentPage = Math.min(page, totalPages);
+  const visibleOrders = filteredOrders.slice((currentPage - 1) * limit, currentPage * limit);
+  const resetFilters = () => {
+    setQuery('');
+    setStatusFilter('ALL');
+    setFrom('');
+    setTo('');
+    setSort('newest');
+    setPage(1);
+  };
 
   const updateOrderStatus = useCallback(async (order: Order, status: string) => {
     await apiPut(`/orders/${order.id}/status`, { status });
@@ -69,19 +94,19 @@ export function AdminOrders() {
   return (
     <AdminPage title="Orders" description="Track fulfillment, inspect order items and update customer order status." message={message}>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <AdminToolbar>
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setPage(1); }}
             placeholder="Search orders"
             className={`${adminInputClass} w-full pl-9`}
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
           className={adminInputClass}
         >
           <option value="ALL">All statuses</option>
@@ -89,14 +114,29 @@ export function AdminOrders() {
             <option key={status} value={status}>{status}</option>
           ))}
         </select>
-      </div>
+        <input type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} className={adminInputClass} />
+        <input type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} className={adminInputClass} />
+        <select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} className={adminInputClass}>
+          <option value="newest">Newest</option>
+          <option value="amount_desc">Amount high to low</option>
+          <option value="amount_asc">Amount low to high</option>
+          <option value="status">Status</option>
+        </select>
+        <select value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }} className={adminInputClass}>
+          <option value={10}>10 rows</option>
+          <option value={20}>20 rows</option>
+          <option value={50}>50 rows</option>
+        </select>
+        <button type="button" onClick={resetFilters} className={adminSecondaryButtonClass}>Reset</button>
+      </AdminToolbar>
 
-      <AdminOrdersTable
-        orders={filteredOrders}
+      {visibleOrders.length > 0 ? <AdminOrdersTable
+        orders={visibleOrders}
         orderStatuses={orderStatuses}
         onOpenDetails={handleOpenDetails}
         onUpdateStatus={handleUpdateStatus}
-      />
+      /> : <AdminEmptyState message="No orders match the current filters." />}
+      <AdminPaginationBar meta={{ page: currentPage, limit, total: filteredOrders.length }} onPageChange={setPage} />
 
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60">

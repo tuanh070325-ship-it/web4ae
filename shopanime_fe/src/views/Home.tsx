@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { apiGet } from '../lib/api';
 import { getProductAuthor, getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount, useProductPlaceholderImage } from '../lib/format';
 import type { PaginatedApiResponse, PaginationMeta, Product } from '../lib/types';
+import { trackEvent } from '../lib/analytics';
 import { Pagination } from '../components/ui/Pagination';
 import { ProductDealPrice } from '../components/ui/ProductDealPrice';
 
@@ -50,6 +51,12 @@ export function Home() {
       })
       .catch(err => console.error('Error fetching products:', err));
   }, [productPage]);
+
+  useEffect(() => {
+    products.forEach((product, index) => {
+      trackEvent('product_impression', { source: 'home_featured', position: index + 1 }, { productId: product.id });
+    });
+  }, [products]);
 
   const changeFeaturedPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -110,6 +117,7 @@ export function Home() {
                 <div>
                   <Link 
                     to="/shop" 
+                    onClick={() => trackEvent('product_click', { source: 'home_hero', position: currentSlide + 1 })}
                     className="inline-flex items-center gap-2 bg-white text-black font-black uppercase tracking-widest px-8 py-4 border-0 outline-none transform transition-transform hover:scale-105 active:scale-95 shadow-[4px_4px_0_0_rgba(230,57,70,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
                   >
                     {BANNERS[currentSlide].button} <ChevronRight className="w-6 h-6" />
@@ -157,7 +165,7 @@ export function Home() {
             <span className="w-2 h-8 bg-red-600 block"></span>
             Featured Titles
           </h2>
-          <Link to="/shop" className="group text-zinc-400 hover:text-red-500 transition-colors font-black uppercase tracking-widest text-sm flex items-center gap-1 border-0 outline-none">
+          <Link to="/shop" onClick={() => trackEvent('product_click', { source: 'home_more_link' })} className="group text-zinc-400 hover:text-red-500 transition-colors font-black uppercase tracking-widest text-sm flex items-center gap-1 border-0 outline-none">
             More <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -187,7 +195,7 @@ export function Home() {
               transition={{ delay: idx * 0.1, type: 'spring', bounce: 0.4 }}
               key={product.id}
             >
-              <Link to={getProductPath(product)} className="group block border-0 outline-none">
+              <Link to={getProductPath(product)} onClick={() => trackEvent('product_click', { source: 'home_featured', position: idx + 1 }, { productId: product.id })} className="group block border-0 outline-none">
                 <div className="w-full aspect-[2/3] relative mb-6">
                   {/* The book floating without border */}
                   <motion.div

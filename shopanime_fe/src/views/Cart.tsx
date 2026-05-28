@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { apiDelete, apiGet, apiPut } from '../lib/api';
 import { formatShippingFee, formatUsd, getProductDiscountAmount, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductPath, getProductShippingDiscountAmount, getProductShippingFee, hasProductDiscount, useProductPlaceholderImage } from '../lib/format';
 import type { ApiResponse, CartItem } from '../lib/types';
+import { trackEvent } from '../lib/analytics';
 
 const VAT_RATE = 0.1;
 
@@ -185,7 +186,7 @@ export function Cart() {
               </div>
             </div>
 
-            <Link to="/checkout" className={`w-full font-bold py-3.5 px-4 rounded transition-colors mt-8 text-[15px] text-center block ${items.length ? 'bg-[#cc2936] hover:bg-[#b0222e] text-white' : 'bg-zinc-800 text-zinc-500 pointer-events-none'}`}>
+            <Link to="/checkout" onClick={() => trackEvent('checkout_started', { source: 'cart', quantity: items.length, revenue: total })} className={`w-full font-bold py-3.5 px-4 rounded transition-colors mt-8 text-[15px] text-center block ${items.length ? 'bg-[#cc2936] hover:bg-[#b0222e] text-white' : 'bg-zinc-800 text-zinc-500 pointer-events-none'}`}>
               Proceed to Checkout
             </Link>
 

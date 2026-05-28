@@ -66,13 +66,14 @@ export function Feed() {
   const createComment = useCallback(async (postId: number, comment: string) => {
     if (!isAuthenticated || !comment.trim()) {return;}
     const response = await apiPost<ApiMutationResponse<PostComment>>(`/posts/${postId}/comments`, { content: comment });
-    if (!response.data) {return;}
+    const createdComment = response.data;
+    if (!createdComment) {return;}
     setPosts((current) => current.map((post) => {
       if (post.id !== postId) {return post;}
       return {
         ...post,
         comment_count: Number(post.comment_count || 0) + 1,
-        comments: [...(post.comments || []), response.data],
+        comments: [...(post.comments || []), createdComment],
       };
     }));
   }, [isAuthenticated]);

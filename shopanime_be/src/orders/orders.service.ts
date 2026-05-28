@@ -1,7 +1,61 @@
 import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
+import type { RowDataPacket } from 'mysql2/promise';
 import { DbService } from '../db/db.service.js';
 
 const ORDER_STATUSES = ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'] as const;
+
+export interface CheckoutInput {
+  user_id?: unknown;
+  items?: unknown;
+  receiver_name?: unknown;
+  receiver_phone?: unknown;
+  shipping_address_line?: unknown;
+  shipping_ward?: unknown;
+  shipping_district?: unknown;
+  shipping_city?: unknown;
+  shipping_method?: unknown;
+  notes?: unknown;
+}
+
+interface CheckoutItemInput {
+  product_id?: unknown;
+  quantity?: unknown;
+}
+
+interface OrderRow extends RowDataPacket {
+  id: number;
+  user_id: number | string;
+}
+
+interface OrderItemRow extends RowDataPacket {
+  id: number;
+  order_id: number | string;
+  product_id: number;
+  product_name: string | null;
+  product_image: string | null;
+  price: number | string;
+  quantity: number | string;
+  subtotal: number | string;
+}
+
+interface CheckoutProductRow extends RowDataPacket {
+  id: number;
+  name: string;
+  price: number | string;
+  stock_quantity: number | string;
+  shipping_final_fee: number | string | null;
+  image: string | null;
+  quantity: number;
+}
+
+interface ProductLookupRow extends RowDataPacket {
+  id: number;
+  name: string;
+  price: number | string;
+  stock_quantity: number | string;
+  shipping_final_fee: number | string | null;
+  image: string | null;
+}
 
 function orderStatus(value: unknown) {
   const status = typeof value === 'string' ? value.trim().toUpperCase() : '';
@@ -16,16 +70,16 @@ export class OrdersService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
   async getAllOrders() {
-    const orders = await this.db.query('SELECT * FROM orders ORDER BY created_at DESC');
+    const orders = await this.db.query<OrderRow>('SELECT * FROM orders ORDER BY created_at DESC');
     return this.attachOrderPreviews(orders);
   }
 
   async getUserOrders(userId: string) {
-    const orders = await this.db.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+    const orders = await this.db.query<OrderRow>('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
     return this.attachOrderPreviews(orders);
   }
 
-  private async attachOrderPreviews(orders: any[]) {
+  private async attachOrderPreviews<T extends OrderRow>(orders: T[]) {
     if (orders.length === 0) {
       return orders;
     }
@@ -36,7 +90,7 @@ export class OrdersService {
     }
 
     const placeholders = orderIds.map(() => '?').join(', ');
-    const items = await this.db.query<any>(
+    const items = await this.db.query<OrderItemRow>(
       `
         SELECT id, order_id, product_id, product_name, product_image, price, quantity, subtotal
         FROM order_items
@@ -46,7 +100,7 @@ export class OrdersService {
       orderIds,
     );
 
-    const statsByOrderId = new Map<number, { itemCount: number; productCount: number; previewItems: any[] }>();
+    const statsByOrderId = new Map<number, { itemCount: number; productCount: number; previewItems: OrderItemRow[] }>();
     for (const item of items) {
       const orderId = Number(item.order_id);
       const stats = statsByOrderId.get(orderId) || { itemCount: 0, productCount: 0, previewItems: [] };
@@ -69,8 +123,8 @@ export class OrdersService {
     });
   }
 
-  async getOrderDetails(id: string): Promise<any> {
-    const order = await this.db.one('SELECT * FROM orders WHERE id = ?', [id]);
+  async getOrderDetails(id: string) {
+    const order = await this.db.one<OrderRow>('SELECT * FROM orders WHERE id = ?', [id]);
     if (!order) {
       return null;
     }
@@ -79,7 +133,7 @@ export class OrdersService {
     return { ...order, items };
   }
 
-  checkout(body: any) {
+  checkout(body: CheckoutInput) {
     return this.db.transaction(async (tx) => {
       const userId = Number(body.user_id);
       if (!Number.isInteger(userId) || userId <= 0) {
@@ -93,11 +147,11 @@ export class OrdersService {
 
       const requestedItems = Array.isArray(body.items) ? body.items : [];
       const isBuyNowCheckout = requestedItems.length > 0;
-      let cartItems: any[] = [];
+      let cartItems: CheckoutProductRow[] = [];
 
       if (isBuyNowCheckout) {
         const quantitiesByProductId = new Map<number, number>();
-        for (const requestedItem of requestedItems) {
+        for (const requestedItem of requestedItems as CheckoutItemInput[]) {
           const productId = Number(requestedItem.product_id);
           const quantity = Number(requestedItem.quantity || 1);
           if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
@@ -108,7 +162,7 @@ export class OrdersService {
 
         const productIds = [...quantitiesByProductId.keys()];
         const placeholders = productIds.map(() => '?').join(', ');
-        const products = await tx.query<any>(
+        const products = await tx.query<ProductLookupRow>(
           `
             SELECT id, name, price, stock_quantity, shipping_final_fee, image_url AS image
             FROM products
@@ -127,7 +181,7 @@ export class OrdersService {
           quantity: quantitiesByProductId.get(Number(product.id)) || 1,
         }));
       } else {
-        cartItems = await tx.query<any>(
+        cartItems = await tx.query<CheckoutProductRow>(
           `
             SELECT c.quantity, p.id, p.name, p.price, p.stock_quantity, p.shipping_final_fee, p.image_url AS image
             FROM carts c

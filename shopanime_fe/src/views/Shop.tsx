@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, ChevronDown, Filter, PanelLeftClose, PanelLeftOpen, Star, X } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/api';
 import type { ApiResponse, PaginatedApiResponse, PaginationMeta, Category, Product } from '../lib/types';
+import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../components/auth/AuthProvider';
 import { Pagination } from '../components/ui/Pagination';
 import { ProductGrid } from '../components/shop/ProductGrid';
@@ -67,6 +68,11 @@ export function Shop() {
     } else {
       nextParams.delete(key);
     }
+    if (key === 'search' && value) {
+      trackEvent('search_submitted', { query: value, source: 'shop' });
+    } else if (key !== 'page') {
+      trackEvent('filter_changed', { source: 'shop', [key === 'category' ? 'category' : 'sort']: value || null });
+    }
     if (resetPage) {
       nextParams.delete('page');
     }
@@ -80,6 +86,7 @@ export function Shop() {
     } else {
       nextParams.delete(key);
     }
+    trackEvent('filter_changed', { source: 'shop', category: key, query: value || undefined });
     nextParams.delete('page');
     setSearchParams(nextParams);
   };
@@ -150,6 +157,7 @@ export function Shop() {
       return;
     }
     await apiPost('/cart/items', { product_id: productId, quantity: 1 });
+    trackEvent('add_to_cart', { source: 'shop_grid', quantity: 1 }, { productId });
     window.dispatchEvent(new Event('akibacore:cart-updated'));
   }, [isAuthenticated, navigate]);
 
@@ -331,7 +339,7 @@ export function Shop() {
               </div>
             </div>
 
-            <ProductGrid products={products} onAddToCart={handleAddToCart} />
+            <ProductGrid products={products} onAddToCart={handleAddToCart} source="shop_grid" />
 
             {products.length === 0 && (
               <div className="py-24 text-center text-[#a0a5b1]">

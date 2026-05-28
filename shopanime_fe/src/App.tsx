@@ -22,38 +22,44 @@ import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminCategories } from './views/AdminCategories';
 import { AdminAuthors } from './views/AdminAuthors';
 import { AdminUsers } from './views/AdminUsers';
+import { AdminAnalytics } from './views/AdminAnalytics';
+import { AnalyticsTracker } from './components/analytics/AnalyticsTracker';
 
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/" element={<MainLayout />}>
-        <Route index element={<Home />} />
-        <Route path="shop" element={<Shop />} />
-        <Route path="product/:slug" element={<ProductDetail />} />
-        <Route path="feed" element={<Feed />} />
-        <Route element={<AdminRoute />}>
-          <Route path="admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="orders" element={<AdminOrders />} />
-            <Route path="products" element={<AdminProducts />} />
-            <Route path="categories" element={<AdminCategories />} />
-            <Route path="authors" element={<AdminAuthors />} />
-            <Route path="users" element={<AdminUsers />} />
+    <>
+      <AnalyticsTracker />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Home />} />
+          <Route path="shop" element={<Shop />} />
+          <Route path="product/:slug" element={<ProductDetail />} />
+          <Route path="feed" element={<Feed />} />
+          <Route element={<AdminRoute />}>
+            <Route path="admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="products" element={<AdminProducts />} />
+              <Route path="categories" element={<AdminCategories />} />
+              <Route path="authors" element={<AdminAuthors />} />
+              <Route path="users" element={<AdminUsers />} />
+            </Route>
           </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="cart" element={<Cart />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="wishlist" element={<Wishlist />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="orders/:id" element={<OrderDetail />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route element={<ProtectedRoute />}>
-          <Route path="cart" element={<Cart />} />
-          <Route path="checkout" element={<Checkout />} />
-          <Route path="wishlist" element={<Wishlist />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="orders/:id" element={<OrderDetail />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }
 

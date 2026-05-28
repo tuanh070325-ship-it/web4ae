@@ -1,20 +1,36 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Star } from 'lucide-react';
 import { getProductDiscountPercent, getProductImage, getProductPath, hasProductDiscount, toNumber, useProductPlaceholderImage } from '../../lib/format';
 import type { Product } from '../../lib/types';
+import { trackEvent } from '../../lib/analytics';
 import { ProductDealPrice } from '../ui/ProductDealPrice';
 
 interface ProductGridProps {
   products: Product[];
   onAddToCart: (productId: number) => void;
+  source?: string;
 }
 
-export const ProductGrid = memo(function ProductGrid({ products, onAddToCart }: ProductGridProps) {
+export const ProductGrid = memo(function ProductGrid({ products, onAddToCart, source = 'shop_grid' }: ProductGridProps) {
+  const trackedImpressions = useRef(new Set<number>());
+
+  useEffect(() => {
+    products.forEach((product, index) => {
+      if (trackedImpressions.current.has(product.id)) {return;}
+      trackedImpressions.current.add(product.id);
+      trackEvent('product_impression', { source, position: index + 1 }, { productId: product.id });
+    });
+  }, [products, source]);
+
+  const trackProductClick = (product: Product, position: number) => {
+    trackEvent('product_click', { source, position }, { productId: product.id });
+  };
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-      {products.map((product) => (
+      {products.map((product, index) => (
         <div key={product.id} className="group relative overflow-hidden rounded-xl border border-[#2e333d] bg-[#242730] transition-all duration-300 hover:-translate-y-1 hover:border-[#5ea5c8] hover:shadow-[0_0_22px_rgba(94,165,200,0.35)]">
           <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#ff315a]/18 to-transparent" />
@@ -45,14 +61,14 @@ export const ProductGrid = memo(function ProductGrid({ products, onAddToCart }: 
               <button onClick={() => onAddToCart(product.id)} className="w-3/4 py-2 bg-[#181a1f]/80 backdrop-blur-sm border border-[#5ea5c8] rounded text-white text-sm font-medium hover:bg-[#5ea5c8] hover:text-[#181a1f] transition-colors shadow-[0_0_10px_rgba(94,165,200,0.5)]">
                 Add to Cart
               </button>
-              <Link to={getProductPath(product)} className="w-3/4 py-2 bg-[#181a1f]/80 backdrop-blur-sm border border-[#5ea5c8] rounded text-white text-sm font-medium hover:bg-[#5ea5c8] hover:text-[#181a1f] transition-colors shadow-[0_0_10px_rgba(94,165,200,0.5)] text-center">
+              <Link onClick={() => trackProductClick(product, index + 1)} to={getProductPath(product)} className="w-3/4 py-2 bg-[#181a1f]/80 backdrop-blur-sm border border-[#5ea5c8] rounded text-white text-sm font-medium hover:bg-[#5ea5c8] hover:text-[#181a1f] transition-colors shadow-[0_0_10px_rgba(94,165,200,0.5)] text-center">
                 Quick View
               </Link>
             </div>
           </div>
 
           <div className="relative p-4 pt-3 flex flex-col">
-            <Link to={getProductPath(product)} className="hover:text-[#5ea5c8] transition-colors">
+            <Link onClick={() => trackProductClick(product, index + 1)} to={getProductPath(product)} className="hover:text-[#5ea5c8] transition-colors">
               <h3 className="line-clamp-1 text-[15px] font-bold text-white mb-3">
                 {product.name}
               </h3>

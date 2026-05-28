@@ -1,13 +1,14 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BarChart3, BookOpen, FileText, FolderTree, LogOut, Menu, PenTool, Users, X } from 'lucide-react';
+import { BarChart3, BookOpen, FileText, FolderTree, LineChart, LogOut, Menu, PenTool, Users, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { getUserAvatar } from '../../lib/avatar';
 import logoIcon from '../../../img/logo.png';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: BarChart3 },
+  { to: '/admin/analytics', label: 'Analytics', icon: LineChart },
   { to: '/admin/products', label: 'Products', icon: BookOpen },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/categories', label: 'Categories', icon: FolderTree },

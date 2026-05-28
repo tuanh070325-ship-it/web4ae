@@ -1,7 +1,95 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { IsOptional } from 'class-validator';
 import { CatalogService } from './catalog.service.js';
 import { AuthGuard, AdminGuard } from '../db/auth.guard.js';
 import { bindControllerMethods } from '../common/bind-controller-methods.js';
+
+class ProductBodyDto {
+  @IsOptional()
+  name?: unknown;
+
+  @IsOptional()
+  slug?: unknown;
+
+  @IsOptional()
+  author_id?: unknown;
+
+  @IsOptional()
+  category_id?: unknown;
+
+  @IsOptional()
+  category_ids?: unknown;
+
+  @IsOptional()
+  publisher_id?: unknown;
+
+  @IsOptional()
+  series_id?: unknown;
+
+  @IsOptional()
+  original_price?: unknown;
+
+  @IsOptional()
+  discount_percent?: unknown;
+
+  @IsOptional()
+  price?: unknown;
+
+  @IsOptional()
+  discount_price?: unknown;
+
+  @IsOptional()
+  shipping_fee?: unknown;
+
+  @IsOptional()
+  shipping_discount_percent?: unknown;
+
+  @IsOptional()
+  shipping_final_fee?: unknown;
+
+  @IsOptional()
+  image_url?: unknown;
+
+  @IsOptional()
+  description?: unknown;
+
+  @IsOptional()
+  stock_quantity?: unknown;
+
+  @IsOptional()
+  status?: unknown;
+}
+
+class CategoryBodyDto {
+  @IsOptional()
+  name?: unknown;
+
+  @IsOptional()
+  parent_id?: unknown;
+
+  @IsOptional()
+  description?: unknown;
+
+  @IsOptional()
+  status?: unknown;
+}
+
+class AuthorBodyDto {
+  @IsOptional()
+  name?: unknown;
+
+  @IsOptional()
+  slug?: unknown;
+
+  @IsOptional()
+  bio?: unknown;
+
+  @IsOptional()
+  avatar_url?: unknown;
+
+  @IsOptional()
+  country?: unknown;
+}
 
 @Controller()
 export class CatalogController {
@@ -42,14 +130,14 @@ export class CatalogController {
 
   @Post('products')
   @UseGuards(AuthGuard, AdminGuard)
-  async createProduct(@Body() body: any) {
+  async createProduct(@Body() body: ProductBodyDto) {
     const newId = await this.catalogService.createProduct(body);
     return { data: { id: newId }, message: 'Product created' };
   }
 
   @Put('products/:id')
   @UseGuards(AuthGuard, AdminGuard)
-  async updateProduct(@Param('id') id: string, @Body() body: any) {
+  async updateProduct(@Param('id') id: string, @Body() body: ProductBodyDto) {
     await this.catalogService.updateProduct(id, body);
     return { message: 'Product updated successfully' };
   }
@@ -68,14 +156,14 @@ export class CatalogController {
 
   @Post('categories')
   @UseGuards(AuthGuard, AdminGuard)
-  async createCategory(@Body() body: any) {
+  async createCategory(@Body() body: CategoryBodyDto) {
     const newId = await this.catalogService.createCategory(body);
     return { data: { id: newId }, message: 'Category created' };
   }
 
   @Put('categories/:id')
   @UseGuards(AuthGuard, AdminGuard)
-  async updateCategory(@Param('id') id: string, @Body() body: any) {
+  async updateCategory(@Param('id') id: string, @Body() body: CategoryBodyDto) {
     await this.catalogService.updateCategory(id, body);
     return { message: 'Category updated successfully' };
   }
@@ -94,14 +182,14 @@ export class CatalogController {
 
   @Post('authors')
   @UseGuards(AuthGuard, AdminGuard)
-  async createAuthor(@Body() body: any) {
+  async createAuthor(@Body() body: AuthorBodyDto) {
     const newId = await this.catalogService.createAuthor(body);
     return { data: { id: newId }, message: 'Author created' };
   }
 
   @Put('authors/:id')
   @UseGuards(AuthGuard, AdminGuard)
-  async updateAuthor(@Param('id') id: string, @Body() body: any) {
+  async updateAuthor(@Param('id') id: string, @Body() body: AuthorBodyDto) {
     await this.catalogService.updateAuthor(id, body);
     return { message: 'Author updated successfully' };
   }

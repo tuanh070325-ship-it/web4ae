@@ -1,6 +1,31 @@
 import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
+import type { RowDataPacket } from 'mysql2/promise';
 import { DbService } from '../db/db.service.js';
 import { hashPassword } from '../auth/password.js';
+
+export interface UserInput {
+  username?: unknown;
+  email?: unknown;
+  password?: unknown;
+  full_name?: unknown;
+  phone?: unknown;
+  avatar_url?: unknown;
+  status?: unknown;
+  role?: unknown;
+}
+
+export interface AddressInput {
+  receiver_name?: unknown;
+  receiver_phone?: unknown;
+  address_line?: unknown;
+  ward?: unknown;
+  district?: unknown;
+  city?: unknown;
+  country?: unknown;
+  postal_code?: unknown;
+  address_type?: unknown;
+  is_default?: unknown;
+}
 
 function nullableString(value: unknown) {
   if (value === null || value === undefined) {return null;}
@@ -38,13 +63,13 @@ export class UsersService {
     return this.db.query('SELECT id, username, email, full_name, avatar_url, phone, status, role, created_at FROM users');
   }
 
-  async createUser(body: any) {
+  async createUser(body: UserInput) {
     const username = nullableString(body.username);
     const email = nullableString(body.email)?.toLowerCase();
     if (!username || !email) {
       throw new BadRequestException('Username and email are required');
     }
-    const password = body.password || 'password123';
+    const password = nullableString(body.password) || 'password123';
     const result = await this.db.execute(
       `
         INSERT INTO users (username, email, password_hash, full_name, phone, avatar_url, status, role)
@@ -72,7 +97,7 @@ export class UsersService {
     return user;
   }
 
-  async updateUser(id: string, body: any) {
+  async updateUser(id: string, body: UserInput) {
     const username = optionalString(body.username);
     const email = optionalString(body.email)?.toLowerCase();
     const password = optionalString(body.password);
@@ -89,12 +114,12 @@ export class UsersService {
     if (body.email !== undefined && !email) {
       throw new BadRequestException('Email cannot be empty');
     }
-    if (password !== undefined && password.length < 6) {
+    if (password !== undefined && password !== null && password.length < 6) {
       throw new BadRequestException('Password must be at least 6 characters');
     }
 
     if (username || email) {
-      const existing = await this.db.one<{ id: number } & any>(
+      const existing = await this.db.one<RowDataPacket & { id: number }>(
         'SELECT id FROM users WHERE (username = ? OR email = ?) AND id <> ?',
         [username || '', email || '', id],
       );
@@ -147,7 +172,7 @@ export class UsersService {
     return this.db.query('SELECT * FROM user_addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC', [id]);
   }
 
-  async createAddress(id: string, body: any) {
+  async createAddress(id: string, body: AddressInput) {
     if (body.is_default) {
       await this.db.execute('UPDATE user_addresses SET is_default = 0 WHERE user_id = ?', [id]);
     }
@@ -177,7 +202,7 @@ export class UsersService {
     return result.insertId;
   }
 
-  async updateAddress(userId: string, addressId: string, body: any) {
+  async updateAddress(userId: string, addressId: string, body: AddressInput) {
     if (body.is_default) {
       await this.db.execute('UPDATE user_addresses SET is_default = 0 WHERE user_id = ?', [userId]);
     }

@@ -17,7 +17,11 @@ function base64UrlDecode(value: string) {
 }
 
 function getSecret() {
-  return process.env.JWT_SECRET || 'dev-secret-change-me';
+  const secret = process.env.JWT_SECRET || 'dev-secret-change-me';
+  if (process.env.NODE_ENV === 'production' && secret === 'dev-secret-change-me') {
+    throw new Error('JWT_SECRET must be set in production');
+  }
+  return secret;
 }
 
 function sign(value: string) {

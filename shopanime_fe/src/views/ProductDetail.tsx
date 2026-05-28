@@ -7,6 +7,7 @@ import { apiGet, apiPost } from '../lib/api';
 import { formatShippingFee, formatUsd, getProductAuthor, getProductDiscountAmount, getProductDiscountPercent, getProductFinalPrice, getProductFinalShippingFee, getProductImage, getProductOriginalPrice, getProductShippingDiscountPercent, getProductShippingFee, hasProductDiscount, toNumber, useProductPlaceholderImage } from '../lib/format';
 import type { ApiMutationResponse, ApiResponse, Product, Review } from '../lib/types';
 import { useAuth } from '../components/auth/AuthProvider';
+import { trackEvent } from '../lib/analytics';
 
 function RatingStars({ value }: { value: number }) {
   return (
@@ -57,6 +58,7 @@ export function ProductDetail() {
 
   useEffect(() => {
     if (!productId) {return;}
+    trackEvent('product_view', { source: 'product_detail' }, { productId });
     apiGet<ApiResponse<Review[]>>(`/reviews/${productId}`)
       .then((response) => setReviews(response.data))
       .catch(() => setReviews([]));
@@ -81,6 +83,7 @@ export function ProductDetail() {
     if (!product || !requireLogin()) {return;}
     setMessage(null);
     await apiPost<ApiMutationResponse>('/cart/items', { product_id: product.id, quantity });
+    trackEvent('add_to_cart', { source: 'product_detail', quantity, price: finalPrice }, { productId: product.id });
     window.dispatchEvent(new Event('akibacore:cart-updated'));
     setAdded(true);
     setMessage('Added to cart');
@@ -100,6 +103,7 @@ export function ProductDetail() {
           quantity,
         }),
       );
+      trackEvent('checkout_started', { source: 'buy_now', quantity, price: finalPrice }, { productId: product.id });
       navigate('/checkout?buyNow=1');
     } finally {
       setBuying(false);

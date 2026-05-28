@@ -8,6 +8,7 @@ These instructions are for AI coding agents working in this repository. They ada
 - `shopanime_fe`: Next.js + React 19 + Tailwind frontend. Entry: `shopanime_fe/src/app`.
 - Root scripts coordinate both apps. Prefer root scripts when verifying cross-app behavior.
 - Backend schema/API docs live in `shopanime_be/database_schema.md` and `shopanime_be/API_DOCS.md`.
+- Admin analytics and deterministic demo-data behavior are documented in `README.md`, `shopanime_be/API_DOCS.md`, and `shopanime_be/database_schema.md`.
 
 ## Operating Principles
 
@@ -38,6 +39,7 @@ These instructions are for AI coding agents working in this repository. They ada
 - Frontend-only changes: run `npm --prefix shopanime_fe run typecheck` and usually `npm --prefix shopanime_fe run build`.
 - Backend-only changes: run `npm run backend:build`.
 - Cross-app changes: run `npm run lint` or `npm run build` when feasible.
+- Admin analytics or demo-data changes: run `npm run typecheck`, `npm run lint`, and the relevant backend script (`npm --prefix shopanime_be run db:sync` or `npm --prefix shopanime_be run db:seed:demo`) when database verification is required.
 - If a command cannot run, report the exact reason and the residual risk.
 
 ## TypeScript Rules
@@ -56,6 +58,8 @@ These instructions are for AI coding agents working in this repository. They ada
 - For visual UI work, read `DESIGN.md` first and keep mobile-first catalog UX: drawers/collapsible panels for secondary navigation and filters, product content visible without excessive pre-content scrolling.
 - Keep product/category/order fields aligned with backend query aliases, especially `image` vs `image_url`, `author` vs `author_name`, and DECIMAL values.
 - Do not add app-wide state management unless a task clearly requires shared mutable state.
+- Admin management pages should expose a consistent toolbar pattern: search, filters, sort, row count, reset, table, empty state, and pagination.
+- Keep `/admin` focused on operational overview and `/admin/analytics` focused on visitor/product/conversion behavior. Link them conceptually, but do not collapse both into a single oversized page.
 
 ## Backend Rules
 
@@ -67,6 +71,8 @@ These instructions are for AI coding agents working in this repository. They ada
   - `DB_REBUILD_SCHEMA=true`: destructive development rebuild.
   - `DB_SEED_ON_START=true`: seed demo data when empty.
 - Validate user-facing request bodies at controller/service boundaries before using them in SQL.
+- Analytics events must use stable event names and whitelisted metadata. Do not store raw IP addresses; use salted hashes only.
+- Do not run `db:seed:demo` against production data. It resets development operational/demo tables to rebuild a coherent timeline.
 
 ## Dependency Rules
 

@@ -5,6 +5,8 @@ import { CreditCard } from 'lucide-react';
 import { apiGet, apiPost } from '../lib/api';
 import type { ApiMutationResponse, ApiResponse, CartItem, Product } from '../lib/types';
 import { OrderSummary } from '../components/checkout/OrderSummary';
+import { getProductFinalPrice, getProductFinalShippingFee } from '../lib/format';
+import { trackEvent } from '../lib/analytics';
 
 const BUY_NOW_CHECKOUT_KEY = 'akibacore.buyNowCheckout';
 
@@ -31,6 +33,7 @@ export function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const isBuyNowCheckout = new URLSearchParams(location.search).get('buyNow') === '1';
   const checkoutItems = buyNowItem ? [buyNowItem] : items;
+  const checkoutTotal = checkoutItems.reduce((sum, item) => sum + getProductFinalPrice(item) * item.quantity + getProductFinalShippingFee(item), 0);
 
   useEffect(() => {
     if (isBuyNowCheckout) {
@@ -84,6 +87,14 @@ export function Checkout() {
       } else {
         window.dispatchEvent(new Event('akibacore:cart-updated'));
       }
+      for (const item of checkoutItems) {
+        trackEvent('order_completed', {
+          source: isBuyNowCheckout ? 'buy_now' : 'checkout',
+          quantity: item.quantity,
+          revenue: getProductFinalPrice(item) * item.quantity,
+        }, { productId: item.id, orderId: response.data?.orderId });
+      }
+      trackEvent('order_completed', { source: 'checkout_total', quantity: checkoutItems.length, revenue: checkoutTotal }, { orderId: response.data?.orderId });
       navigate('/orders', { replace: true, state: { orderId: response.data?.orderId } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to place order');

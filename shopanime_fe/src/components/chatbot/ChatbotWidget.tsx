@@ -1,11 +1,19 @@
-import type { FormEvent, KeyboardEvent} from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 import { useMemo, useRef, useState } from 'react';
-import { Bot, Headphones, MessageCircle, Minus, Send, X } from 'lucide-react';
+import { ConciergeBell, Headphones, MessageCircle, Minus, Send, ShieldCheck, X } from 'lucide-react';
 import { apiPost } from '../../lib/api';
 import type { ApiResponse } from '../../lib/types';
+import supportAvatar from '../../../img/coding.png';
 import { useAuth } from '../auth/AuthProvider';
 
 const CHATBOT_SESSION_KEY = 'akibacore.chatbotSessionId';
+
+const starterQuestions = [
+  'Which manga are on sale?',
+  'Where can I track my order?',
+  'Recommend best-selling action manga',
+  'What are the free shipping terms?',
+];
 
 interface ChatMessage {
   id: string;
@@ -46,18 +54,13 @@ export function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Xin chao, minh la AkibaCore AI Support. Minh co the ho tro ve san pham, don hang, gio hang va uu dai.',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sessionId = useMemo(() => getChatbotSessionId(), []);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const hasUserMessage = messages.some((message) => message.role === 'user');
 
   const showPanel = () => {
     setOpen(true);
@@ -133,21 +136,22 @@ export function ChatbotWidget() {
     <div className="fixed bottom-4 right-4 z-[70] sm:bottom-6 sm:right-6">
       {open && (
         <section
-          className={`mb-4 w-[calc(100vw-2rem)] max-w-[390px] overflow-hidden rounded-lg border border-[#2e333d] bg-[#111216] text-white shadow-[0_24px_80px_rgba(0,0,0,0.52)] transition-all sm:w-[390px] ${
-            minimized ? 'h-[72px]' : 'h-[min(620px,calc(100vh-8rem))]'
+          className={`mb-4 w-[calc(100vw-2rem)] max-w-[420px] overflow-hidden rounded-2xl border border-[#2e333d] bg-[#101217] text-white shadow-[0_28px_90px_rgba(0,0,0,0.58)] transition-all sm:w-[420px] ${
+            minimized ? 'h-[76px]' : 'h-[min(660px,calc(100vh-8rem))]'
           }`}
           aria-label="AkibaCore AI customer support chat"
         >
-          <div className="flex h-[72px] items-center justify-between border-b border-[#2e333d] bg-[#171a20] px-4">
+          <div className="flex h-[76px] items-center justify-between border-b border-[#2e333d] bg-[#171a20] px-4">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e63946] text-white shadow-[0_0_24px_rgba(230,57,70,0.42)]">
-                <Bot className="h-5 w-5" />
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#22252d] shadow-[0_0_26px_rgba(230,57,70,0.34)]">
+                <img src={supportAvatar.src} alt="AkibaCore support" className="h-full w-full object-cover" />
+                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-[#171a20] bg-emerald-400" />
               </div>
               <div className="min-w-0">
                 <div className="truncate text-sm font-black uppercase tracking-wide text-white">AkibaCore AI Support</div>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-zinc-400">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Customer care assistant
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  Customer care desk
                 </div>
               </div>
             </div>
@@ -173,18 +177,33 @@ export function ChatbotWidget() {
           </div>
 
           {!minimized && (
-            <div className="flex h-[calc(100%-72px)] flex-col">
-              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div className="flex h-[calc(100%-76px)] flex-col bg-[radial-gradient(circle_at_50%_20%,rgba(230,57,70,0.12),transparent_32%),linear-gradient(180deg,#101217_0%,#111216_55%,#151119_100%)]">
+              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
+                {!hasUserMessage && (
+                  <div className="flex min-h-[330px] flex-col justify-center">
+                    <div className="mx-auto max-w-[310px] text-center">
+                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#22252d] shadow-[0_12px_30px_rgba(0,0,0,0.28)]">
+                        <img src={supportAvatar.src} alt="AkibaCore support" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="text-lg font-black text-white">AkibaCore Support</div>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-zinc-500">Chon cau hoi nhanh hoac nhap noi dung ban can ho tro.</p>
+                    </div>
+                  </div>
+                )}
+
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
                   >
+                    <span className="mb-1 px-1 text-[10px] font-black uppercase tracking-wide text-zinc-500">
+                      {message.role === 'user' ? 'Me' : 'Our AI'}
+                    </span>
                     <div
-                      className={`max-w-[82%] rounded-lg px-3.5 py-2.5 text-sm leading-6 ${
+                      className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm font-semibold leading-6 shadow-[0_12px_28px_rgba(0,0,0,0.16)] ${
                         message.role === 'user'
-                          ? 'bg-[#e63946] text-white'
-                          : 'border border-[#2e333d] bg-[#1a1b22] text-zinc-100'
+                          ? 'rounded-br-md bg-[#e63946] text-white'
+                          : 'rounded-bl-md border border-[#343d43] bg-white/[0.06] text-zinc-100 backdrop-blur'
                       }`}
                     >
                       {message.content}
@@ -194,15 +213,33 @@ export function ChatbotWidget() {
 
                 {sending && (
                   <div className="flex justify-start">
-                    <div className="inline-flex items-center gap-2 rounded-lg border border-[#2e333d] bg-[#1a1b22] px-3.5 py-2.5 text-sm text-zinc-300">
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-[#2e333d] bg-white/[0.06] px-3.5 py-2.5 text-sm text-zinc-300">
                       <span className="h-2 w-2 animate-pulse rounded-full bg-[#e63946]" />
                       AI Support is typing...
                     </div>
                   </div>
                 )}
+
+                {!hasUserMessage && (
+                  <div>
+                    <div className="mb-2 text-[11px] font-black uppercase tracking-wide text-zinc-500">Suggestions on what to ask our AI</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {starterQuestions.map((question) => (
+                        <button
+                          type="button"
+                          key={question}
+                          onClick={() => void sendMessage(question)}
+                          className="min-h-12 rounded-xl border border-[#343d43] bg-white/[0.08] px-3 py-2 text-left text-xs font-bold leading-4 text-zinc-200 transition-colors hover:border-[#e63946] hover:bg-[#e63946]/10 hover:text-white"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="border-t border-[#2e333d] bg-[#15171d] p-4">
+              <div className="border-t border-[#2e333d] bg-[#15171d]/95 p-4 backdrop-blur">
                 {suggestions.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {suggestions.map((suggestion) => (
@@ -210,7 +247,7 @@ export function ChatbotWidget() {
                         type="button"
                         key={suggestion}
                         onClick={() => void sendMessage(suggestion)}
-                        className="rounded-full border border-[#2e333d] bg-[#111216] px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-[#e63946] hover:text-white"
+                        className="rounded-full border border-[#343d43] bg-[#101217] px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-[#e63946] hover:bg-[#e63946]/10 hover:text-white"
                       >
                         {suggestion}
                       </button>
@@ -228,13 +265,13 @@ export function ChatbotWidget() {
                     onKeyDown={handleInputKeyDown}
                     rows={1}
                     maxLength={2000}
-                    placeholder="Nhap cau hoi cua ban..."
-                    className="max-h-24 min-h-11 flex-1 resize-none rounded border border-[#2e333d] bg-[#0f1115] px-3 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-[#e63946]"
+                    placeholder="Ask me about products, orders, shipping..."
+                    className="max-h-24 min-h-12 flex-1 resize-none rounded-xl border border-[#343d43] bg-[#0f1115] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-[#e63946]"
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || sending}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-[#e63946] text-white transition-colors hover:bg-[#ff4d5a] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e63946] text-white transition-colors hover:bg-[#ff4d5a] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
                     aria-label="Send chat message"
                   >
                     <Send className="h-4 w-4" />
@@ -259,7 +296,8 @@ export function ChatbotWidget() {
           <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400 ring-4 ring-[#111216]">
             <Headphones className="h-3 w-3 text-[#111216]" />
           </span>
-          <MessageCircle className="h-7 w-7 text-[#e63946]" />
+          <ConciergeBell className="h-7 w-7 text-[#e63946] transition-opacity group-hover:opacity-0" />
+          <MessageCircle className="absolute h-7 w-7 text-[#e63946] opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
       )}
     </div>

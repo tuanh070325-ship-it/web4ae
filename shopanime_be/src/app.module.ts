@@ -10,8 +10,9 @@ import { WishlistModule } from './wishlist/wishlist.module.js';
 import { ChatbotModule } from './chatbot/chatbot.module.js';
 import { ProductAiModule } from './product-ai/product-ai.module.js';
 import { UploadsModule } from './uploads/uploads.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 
 @Module({
-  imports: [DbModule, AuthModule, UsersModule, CatalogModule, CartModule, WishlistModule, OrdersModule, CommunityModule, ChatbotModule, ProductAiModule, UploadsModule],
+  imports: [DbModule, AuthModule, UsersModule, CatalogModule, CartModule, WishlistModule, OrdersModule, CommunityModule, ChatbotModule, ProductAiModule, UploadsModule, AnalyticsModule],
 })
 export class AppModule {}

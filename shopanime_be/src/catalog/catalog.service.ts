@@ -23,6 +23,21 @@ interface ProductInput {
   status?: unknown;
 }
 
+interface CategoryInput {
+  name?: unknown;
+  parent_id?: unknown;
+  description?: unknown;
+  status?: unknown;
+}
+
+interface AuthorInput {
+  name?: unknown;
+  slug?: unknown;
+  bio?: unknown;
+  avatar_url?: unknown;
+  country?: unknown;
+}
+
 type ProductSort = 'popularity' | 'newest' | 'price_asc' | 'price_desc' | 'rating';
 
 interface ProductFilters {
@@ -288,7 +303,7 @@ export class CatalogService {
   constructor(@Inject(DbService) private readonly db: DbService) {}
 
 
-  private async uniqueSlug(table: 'products' | 'categories', name: string, fallback: string, excludeId?: number | null) {
+  private async uniqueSlug(table: 'products' | 'categories' | 'authors', name: string, fallback: string, excludeId?: number | null) {
     const base = slugBase(name, fallback);
     for (let index = 0; index < 500; index += 1) {
       const suffix = index === 0 ? null : index + 1;
@@ -612,6 +627,7 @@ export class CatalogService {
     await this.assertCategoryIds(allCategoryIds);
     await this.assertReference('publishers', publisherId, 'publisher_id');
     await this.assertReference('book_series', seriesId, 'series_id');
+    const slug = await this.uniqueSlug('products', name, 'product');
 
     return this.db.transaction(async (tx) => {
       const result = await tx.execute(
@@ -649,7 +665,7 @@ export class CatalogService {
 
   async updateProduct(id: string, body: ProductInput) {
     const name = body.name === undefined ? undefined : nullableString(body.name);
-    const slug = name === undefined ? undefined : await this.uniqueSlug('products', name, 'product', Number(id));
+    const slug = name === undefined || name === null ? undefined : await this.uniqueSlug('products', name, 'product', Number(id));
     const stockQuantity = optionalNumber(body.stock_quantity);
     const status = body.status === undefined ? undefined : productStatus(body.status);
     const imageUrl = body.image_url === undefined ? undefined : productImageUrl(body.image_url);
@@ -799,7 +815,7 @@ export class CatalogService {
     return this.db.query('SELECT * FROM categories ORDER BY sort_order IS NULL, sort_order, name');
   }
 
-  async createCategory(body: any) {
+  async createCategory(body: CategoryInput) {
     const name = nullableString(body.name);
     const parentId = nullableId(body.parent_id, 'parent_id');
     if (!name) {
@@ -816,7 +832,7 @@ export class CatalogService {
     return { id: result.insertId, slug };
   }
 
-  async updateCategory(id: string, body: any) {
+  async updateCategory(id: string, body: CategoryInput) {
     const name = body.name === undefined ? undefined : nullableString(body.name);
     if (body.name !== undefined && !name) {
       throw new BadRequestException('Category name cannot be empty');
@@ -837,7 +853,7 @@ export class CatalogService {
     };
 
     pushUpdate('name = ?', name);
-    pushUpdate('slug = ?', name === undefined ? undefined : await this.uniqueSlug('categories', name, 'category', categoryId));
+    pushUpdate('slug = ?', name === undefined || name === null ? undefined : await this.uniqueSlug('categories', name, 'category', categoryId));
     pushUpdate('parent_id = ?', parentId);
     pushUpdate('description = ?', body.description === undefined ? undefined : nullableString(body.description));
     pushUpdate('status = ?', body.status === undefined ? undefined : categoryStatus(body.status));
@@ -868,11 +884,12 @@ export class CatalogService {
     return this.db.query('SELECT * FROM authors ORDER BY name');
   }
 
-  async createAuthor(body: any) {
+  async createAuthor(body: AuthorInput) {
     const name = nullableString(body.name);
     if (!name) {
       throw new BadRequestException('Author name is required');
     }
+    const slug = await this.uniqueSlug('authors', name, 'author');
     const result = await this.db.execute('INSERT INTO authors (name, slug, bio, avatar_url, country) VALUES (?, ?, ?, ?, ?)', [
       name,
       slug,
@@ -883,7 +900,7 @@ export class CatalogService {
     return { id: result.insertId, slug };
   }
 
-  async updateAuthor(id: string, body: any) {
+  async updateAuthor(id: string, body: AuthorInput) {
     const name = body.name === undefined ? undefined : nullableString(body.name);
     if (body.name !== undefined && !name) {
       throw new BadRequestException('Author name cannot be empty');

@@ -8,6 +8,8 @@ http://localhost:4000/api
 
 Most endpoints return JSON wrapped in `data`. Admin endpoints require `Authorization: Bearer <token>`. In local development only, protected endpoints also accept `x-user-id` for quick testing.
 
+Admin list screens use client-side filtering for users, categories, and authors today. Product listing already supports paginated admin queries through `/admin/products`. Orders are currently loaded as a list and filtered in the admin UI.
+
 ## Auth
 
 Login with seeded admin:
@@ -182,6 +184,74 @@ User write validation:
 - `status` must be `ACTIVE`, `INACTIVE`, or `LOCKED`.
 - `password`, when creating a user, is hashed by backend and stored as `base64:<Base64 of "scrypt:<salt>:<derived-key>">`.
 - Never send an already-hashed password from the frontend. Send the plain password over HTTPS and let the backend hash it.
+
+## Analytics
+
+Record a public analytics event:
+
+```bash
+curl -X POST http://localhost:4000/api/analytics/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_name":"product_click",
+    "session_id":"demo-session-1",
+    "product_id":1,
+    "path":"/shop",
+    "referrer":"https://google.com",
+    "utm_source":"demo",
+    "metadata":{"source":"shop_grid","position":1}
+  }'
+```
+
+Supported event names:
+
+```text
+page_view
+landing_view
+product_impression
+product_click
+product_view
+search_submitted
+filter_changed
+add_to_cart
+checkout_started
+order_completed
+```
+
+Analytics stores a session id, page path, optional product/order ids, UTM fields, device/browser hints, a hashed IP, and whitelisted metadata. It does not store raw IP addresses.
+
+Admin analytics summary:
+
+```bash
+curl "http://localhost:4000/api/admin/analytics/summary?from=2026-05-01&to=2026-05-28" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Top pages:
+
+```bash
+curl "http://localhost:4000/api/admin/analytics/pages?from=2026-05-01&to=2026-05-28" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Product performance:
+
+```bash
+curl "http://localhost:4000/api/admin/analytics/products?from=2026-05-01&to=2026-05-28" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+Conversion funnel:
+
+```bash
+curl "http://localhost:4000/api/admin/analytics/funnel?from=2026-05-01&to=2026-05-28" \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+The admin dashboard and admin analytics page intentionally serve different use cases:
+
+- `/admin`: operational overview and recent order work queue.
+- `/admin/analytics`: visitor behavior, product engagement, and conversion analysis.
 
 ## Cart And Wishlist
 

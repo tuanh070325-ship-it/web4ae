@@ -11,6 +11,12 @@ const IMAGE_UPLOAD_TYPES = ['product'] as const;
 const ALLOWED_MIME_TYPES = ['image/webp', 'image/jpeg', 'image/png'];
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 
+interface UploadedImageFile {
+  buffer?: Buffer;
+  mimetype?: string;
+  size: number;
+}
+
 function uploadRoot() {
   return path.resolve(process.env.UPLOAD_DIR || 'uploads');
 }
@@ -51,7 +57,7 @@ export class UploadsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Param('type') type: string,
-    @UploadedFile() file: any,
+    @UploadedFile() file: UploadedImageFile | undefined,
     @Req() request: Request,
   ) {
     const uploadType = validateUploadType(type);

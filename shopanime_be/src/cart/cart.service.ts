@@ -1,5 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
+import type { RowDataPacket } from 'mysql2/promise';
 import { DbService } from '../db/db.service.js';
+
+export interface CartItemInput {
+  user_id?: unknown;
+  product_id?: unknown;
+  quantity?: unknown;
+}
+
+interface ProductStockRow extends RowDataPacket {
+  stock_quantity: number | string;
+}
 
 @Injectable()
 export class CartService {
@@ -18,13 +29,13 @@ export class CartService {
     );
   }
 
-  async addToCart(body: any) {
+  async addToCart(body: CartItemInput) {
     const quantity = Number(body.quantity || 1);
     if (!body.product_id || quantity <= 0) {
       throw new BadRequestException('Product and positive quantity are required');
     }
 
-    const product = await this.db.one<any>('SELECT stock_quantity FROM products WHERE id = ?', [body.product_id]);
+    const product = await this.db.one<ProductStockRow>('SELECT stock_quantity FROM products WHERE id = ?', [body.product_id]);
     if (!product) {
       throw new NotFoundException('Product not found');
     }
